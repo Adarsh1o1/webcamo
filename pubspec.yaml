@@ -1,0 +1,47 @@
+name: webcamo
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  camera: ^0.10.6
+  permission_handler: ^12.0.1
+  wakelock_plus: ^1.4.0
+  path_provider: ^2.1.2
+  flutter_webrtc: ^1.2.0
+  network_info_plus: ^7.0.0
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  shelf_web_socket: ^3.0.0
+  web_socket_channel: ^3.0.3
+  url_launcher: ^6.3.0
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  # This tells the package to generate icons for Android
+  android: true 
+
+  # This tells the package to generate icons for iOS
+  ios: true
+
+  # This is the path to your master icon file
+  image_path: "android/assets/icon/icon.png" 
+
+  # This creates a special version for Android 12+ (adaptive icons)
+  adaptive_icon_background: "#121212" # (Optional) A background color for Android
+
+flutter:
+  uses-material-design: true
+
+# Add this entire block at the end of the file
