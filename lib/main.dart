@@ -222,7 +222,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   HttpServer? _httpServer;
   String? _serverUrl;
   bool _isConnected = false;
@@ -236,6 +236,9 @@ class _HomePageState extends State<HomePage> {
   bool _isInitialized = false;
   bool _isServerStarting = false;
 
+  Timer? _reconnectTimer;
+  bool _shouldReconnect = true;
+
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
 
   List<MediaDeviceInfo> _cameras = [];
@@ -244,6 +247,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _localRenderer.initialize();
     _checkPermissions();
   }
@@ -251,11 +255,85 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _fullCleanup();
+    WidgetsBinding.instance.removeObserver(this);
     _localRenderer.dispose();
     _httpServer?.close(force: true);
     _ipController.dispose();
     super.dispose();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
+    // if (state == AppLifecycleState.paused ||
+    //     state == AppLifecycleState.inactive) {
+    //   // ✅ App went background → stop streaming but keep preview stream alive
+    //   await _peerConnection?.close();
+    //   _peerConnection = null;
+    //   _isConnected = false;
+    // }
+
+    if (state == AppLifecycleState.resumed) {
+      // ✅ Recreate camera pipeline on resume
+      await _restartCameraPreview();
+    }
+  }
+
+  Future<void> _restartCameraPreview() async {
+    try {      // Recreate camera (fresh pipeline)
+      await _initializeLocalPreview();
+      if (_peerConnection != null) {
+      // 4. Get the new tracks from the stream that is powering our preview
+      final newVideoTrack = _localStream!.getVideoTracks()[0];
+      // final newAudioTrack = _localStream!.getAudioTracks()[0];
+
+      // 5. Find the "senders" in the P2P connection
+      final senders = await _peerConnection!.getSenders();
+      final videoSender = senders.firstWhere((s) => s.track?.kind == 'video');
+      // final audioSender = senders.firstWhere((s) => s.track?.kind == 'audio');
+
+      // 6. Replace the tracks in the connection
+      // print('Replacing tracks on active P2P stream...');
+      await videoSender.replaceTrack(newVideoTrack);
+      // await audioSender.replaceTrack(newAudioTrack);
+    }
+
+      // Restore WebRTC if server was running and previously connected
+      if (_serverUrl != null) {
+        _scheduleReconnect(); // From your auto-reconnect setup
+      }
+
+      setState(() {});
+    } catch (e) {
+      print("Camera restart error: $e");
+    }
+  }
+
+  void _scheduleReconnect() {
+  // Prevent multiple timers
+  _reconnectTimer?.cancel();
+
+  _reconnectTimer = Timer(const Duration(seconds: 2), () async {
+    if (!_shouldReconnect) return;
+
+    print("🔄 Trying to reconnect...");
+
+    // Restart server if server was running before
+    if (_serverUrl != null && _httpServer == null) {
+      await _startServer();
+    }
+
+    // Restart WebRTC connection if server is active
+    if (_serverUrl != null && !_isConnected) {
+      await _createPeerConnection();
+    }
+  });
+}
+
+
+
+
+
+
 
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -280,9 +358,9 @@ class _HomePageState extends State<HomePage> {
         'video': {
           'deviceId': _selectedCamera!.deviceId,
           'mandatory': {
-            'minWidth': '1920',
+            'minWidth': '1080',
             'minHeight': '1080',
-            'maxFrameRate': '30'
+            'maxFrameRate': '30',
           },
         },
       });
@@ -321,7 +399,7 @@ class _HomePageState extends State<HomePage> {
         // print("-------------------------");
 
         _selectedCamera = _cameras.firstWhere(
-          (d) => d.label.toLowerCase().contains('back'),
+          (d) => d.label.toLowerCase().contains('front'),
           orElse: () => _cameras.first,
         );
 
@@ -358,7 +436,7 @@ class _HomePageState extends State<HomePage> {
       // print("Error toggling flash: $e");
 
       _showErrorDialog(
-        "Failed to control flash. (This camera may not have one).",
+        "Failed to control flash",
       );
 
       setState(() {
@@ -402,11 +480,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _startServer() async {
+    _shouldReconnect = true;
     if (mounted) {
       setState(() {
         _isServerStarting = true;
       });
     }
+    await _initializeLocalPreview();
 
     final ip = await NetworkInfo().getWifiIP();
     String? displayIp = ip;
@@ -415,9 +495,6 @@ class _HomePageState extends State<HomePage> {
       displayIp = '192.168.43.1'; // Default for hotspot
     }
 
-    if (_localStream == null) {
-      await _initializeLocalPreview();
-    }
 
     final router = shelf_router.Router();
 
@@ -442,27 +519,13 @@ class _HomePageState extends State<HomePage> {
           (message) {
             _handleSignalingMessage(message);
           },
-
           onDone: () {
-            // print('WebSocket connection closed.');
-
-            if (mounted) {
-              setState(() {
-                _isConnected = false;
-              });
-            }
-
-            _stopStream(); // <-- Use our new "Stop" function
+            _isConnected = false;
+            if (_shouldReconnect) _scheduleReconnect();
           },
-
           onError: (error) {
-            if (mounted) {
-              setState(() {
-                _isConnected = false;
-              });
-            }
-
-            _stopStream(); // <-- Use our new "Stop" function
+            _isConnected = false;
+            if (_shouldReconnect) _scheduleReconnect();
           },
         );
       });
@@ -582,46 +645,42 @@ class _HomePageState extends State<HomePage> {
     // print("P2P Stream stopped. Local preview remains active.");
   }
 
-  Future<void> _refreshServer() async {
-    await _stopStream(); // Stop any active P2P stream
 
-    await _httpServer?.close(force: true); // Close the server
-    _httpServer = null;
 
-    // --- NEW: Reset all server-related states ---
-    if (mounted) {
-      setState(() {
-        _serverUrl = null; // This will show the loading spinner
-        _isConnected = false;
-      });
+
+
+Future<void> _stopServerOnly() async {
+  _shouldReconnect = false;
+
+  // ✅ Remove tracks from PeerConnection cleanly
+  if (_peerConnection != null) {
+    final senders = await _peerConnection!.getSenders();
+    for (var sender in senders) {
+      await _peerConnection!.removeTrack(sender);
     }
+    await _peerConnection!.close();
+  }
+  _peerConnection = null;
 
-    // print("Server shut down. Refreshing...");
+  // ✅ Close signaling
+  _webSocket?.sink.close();
+  _webSocket = null;
 
-    // Re-run the entire startup process
-    // This will re-get the IP and start the server again
-    await _startServer();
+  // ✅ Stop only the server (NOT the camera)
+  await _httpServer?.close(force: true);
+  _httpServer = null;
+
+  if (mounted) {
+    setState(() {
+      _serverUrl = null;
+      _isConnected = false;
+      _isFlashOn = false;
+    });
   }
 
-  Future<void> _stopServerOnly() async {
-    // Stop active P2P stream (but DO NOT stop camera)
-    await _peerConnection?.close();
-    _peerConnection = null;
-    _webSocket?.sink.close();
-    _webSocket = null;
+  // ✅ KEEP PREVIEW RUNNING — DO NOT STOP camera tracks here
+}
 
-    // Stop server
-    await _httpServer?.close(force: true);
-    _httpServer = null;
-
-    if (mounted) {
-      setState(() {
-        _serverUrl = null;
-        _isConnected = false;
-        _isFlashOn = false;
-      });
-    }
-  }
 
   void _sendToPC(Map<String, dynamic> data) {
     if (_webSocket != null) {
@@ -938,7 +997,7 @@ class _HomePageState extends State<HomePage> {
                         if (_isInitialized)
                           // 1. Wrap the container in an AspectRatio widget
                           AspectRatio(
-                            aspectRatio: 1 / 1, // 2. Force a 16:9 ratio
+                            aspectRatio: 4 / 3,
                             child: Container(
                               // 3. Remove the fixed height
                               width: double.infinity,
@@ -1016,7 +1075,7 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
 
-                        const SizedBox(height: 16,),
+                        const SizedBox(height: 16),
 
                         ElevatedButton.icon(
                           onPressed: _serverUrl == null
@@ -1028,12 +1087,17 @@ class _HomePageState extends State<HomePage> {
                                 : Icons.power_off,
                           ),
                           label: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), 
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
                             child: Text(
-                              _serverUrl == null ? 'Start Server' : 'Stop Server',
+                              _serverUrl == null
+                                  ? 'Start Server'
+                                  : 'Stop Server',
                             ),
                           ),
-                          
+
                           style: ElevatedButton.styleFrom(
                             // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                             textStyle: const TextStyle(
