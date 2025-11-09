@@ -16,34 +16,49 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
 
-
-
 const String clientHtml = """
 <!DOCTYPE html>
 <html>
 <head>
     <title>Flutter Webcam Client</title>
     <style>
-        body { background-color: #111; color: white; margin: 0; padding: 0; }
-        /* 1. Create a 1:1 (square) container */
-        #videoContainer {
-          width: 100vmin; /* 100% of the smallest screen dimension */
-          height: 100vmin;
-          overflow: hidden; /* This crops the video */
-          position: relative;
+        body {
+          background-color: #111;
+          color: white;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
           height: 100vh;
         }
 
-        /* 2. Make the video fill the container */
-        video { 
-          width: 100%; 
-          height: 100%; 
-          /* This makes the 16:9 video zoom/crop to fill the 1:1 box */
-          object-fit: cover; 
+        /* Square container (1:1 aspect ratio) */
+        #videoContainer {
+          width: 100vmin;
+          height: 100vmin;
+          position: relative;
+          overflow: hidden;
+          display: flex;
+          justify-content: center;
+          align-items: center;
         }
+
+        /* Video fills the container fully */
+        video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover; /* crop to fill */
+        }
+
         #status {
-            position: fixed; top: 20px; left: 20px;
-            background-color: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          background-color: rgba(0,0,0,0.55);
+          padding: 10px 14px;
+          border-radius: 6px;
+          font-size: 14px;
         }
     </style>
 </head>
@@ -128,23 +143,22 @@ void main() {
 
 const ColorScheme lightColorScheme = ColorScheme(
   brightness: Brightness.light,
-  primary: Color(0xFF4A5C6A), 
+  primary: Color(0xFF4A5C6A),
   onPrimary: Colors.white,
-  secondary: Color(0xFF8A9BA8), 
+  secondary: Color(0xFF8A9BA8),
   onSecondary: Colors.black,
-  tertiary: Color(0xFF67B0A9), 
+  tertiary: Color(0xFF67B0A9),
   onTertiary: Colors.white,
   error: Color(0xFFB00020),
   onError: Colors.white,
   background: Color(0xFFF0F5F5),
   onBackground: Color(0xFF1A1A1A),
-  surface: Color(0xFFE4ECEC), 
+  surface: Color(0xFFE4ECEC),
   onSurface: Color(0xFF1A1A1A),
   surfaceVariant: Color(0xFFD3DFDF),
   onSurfaceVariant: Color(0xFF4A4A4A),
   outline: Color(0xFFB0B0B0),
 );
-
 
 const ColorScheme darkColorScheme = ColorScheme(
   brightness: Brightness.dark,
@@ -152,7 +166,7 @@ const ColorScheme darkColorScheme = ColorScheme(
   onPrimary: Colors.black,
   secondary: Color(0xFF67B0A9),
   onSecondary: Colors.black,
-  tertiary: Color(0xFF4A5C6A), 
+  tertiary: Color(0xFF4A5C6A),
   onTertiary: Colors.white,
   error: Color(0xFFCF6679),
   onError: Colors.black,
@@ -160,7 +174,7 @@ const ColorScheme darkColorScheme = ColorScheme(
   onBackground: Color(0xFFE0E0E0),
   surface: Color(0xFF1E1E1E),
   onSurface: Color(0xFFE0E0E0),
-  surfaceVariant: Color(0xFF2C2C2C), 
+  surfaceVariant: Color(0xFF2C2C2C),
   onSurfaceVariant: Color(0xFFB0B0B0),
   outline: Color(0xFF555555),
 );
@@ -174,9 +188,7 @@ class MyApp extends StatelessWidget {
       title: 'Webcamo',
       debugShowCheckedModeBanner: false,
 
-    
       themeMode: ThemeMode.system, // Automatically use system light/dark mode
-
       // 1. Light Theme
       theme: ThemeData(
         colorScheme: lightColorScheme,
@@ -190,7 +202,7 @@ class MyApp extends StatelessWidget {
 
       // 2. Dark Theme
       darkTheme: ThemeData(
-        colorScheme: darkColorScheme, 
+        colorScheme: darkColorScheme,
         useMaterial3: true,
         appBarTheme: AppBarTheme(
           backgroundColor: darkColorScheme.surfaceVariant,
@@ -198,7 +210,6 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-     
 
       home: const HomePage(),
     );
@@ -223,6 +234,7 @@ class _HomePageState extends State<HomePage> {
   bool _isFlashOn = false;
 
   bool _isInitialized = false;
+  bool _isServerStarting = false;
 
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
 
@@ -245,20 +257,12 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-
-
-
-
-
-Future<void> _launchURL(String urlString) async {
+  Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url)) {
       _showErrorDialog('Could not launch $urlString');
     }
   }
-
-
-
 
   Future<void> _initializeLocalPreview() async {
     if (_selectedCamera == null) return;
@@ -272,18 +276,17 @@ Future<void> _launchURL(String urlString) async {
 
     try {
       _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': false, 
+        'audio': false,
         'video': {
           'deviceId': _selectedCamera!.deviceId,
           'mandatory': {
-            'minWidth': '1280',
-            'minHeight': '960',
-            'maxFrameRate': '30',
+            'minWidth': '1920',
+            'minHeight': '1080',
+            'maxFrameRate': '30'
           },
         },
       });
 
-    
       _localRenderer.srcObject = _localStream;
 
       if (mounted) {
@@ -346,20 +349,18 @@ Future<void> _launchURL(String urlString) async {
       final videoTrack = _localStream!.getVideoTracks()[0];
       final newFlashState = !_isFlashOn;
 
-      
       await videoTrack.setTorch(newFlashState);
 
-     
       setState(() {
         _isFlashOn = newFlashState;
       });
     } catch (e) {
       // print("Error toggling flash: $e");
-     
+
       _showErrorDialog(
         "Failed to control flash. (This camera may not have one).",
       );
-     
+
       setState(() {
         _isFlashOn = false;
       });
@@ -379,9 +380,7 @@ Future<void> _launchURL(String urlString) async {
     // print('Switching camera to: ${_selectedCamera!.label}');
     await _initializeLocalPreview();
 
-  
     if (_peerConnection != null) {
-
       // 4. Get the new tracks from the stream that is powering our preview
       final newVideoTrack = _localStream!.getVideoTracks()[0];
       // final newAudioTrack = _localStream!.getAudioTracks()[0];
@@ -397,13 +396,18 @@ Future<void> _launchURL(String urlString) async {
       // await audioSender.replaceTrack(newAudioTrack);
     }
 
-
     setState(() {
       _isFlashOn = false;
     });
   }
 
   Future<void> _startServer() async {
+    if (mounted) {
+      setState(() {
+        _isServerStarting = true;
+      });
+    }
+
     final ip = await NetworkInfo().getWifiIP();
     String? displayIp = ip;
 
@@ -411,7 +415,9 @@ Future<void> _launchURL(String urlString) async {
       displayIp = '192.168.43.1'; // Default for hotspot
     }
 
-    await _initializeLocalPreview();
+    if (_localStream == null) {
+      await _initializeLocalPreview();
+    }
 
     final router = shelf_router.Router();
 
@@ -436,8 +442,6 @@ Future<void> _launchURL(String urlString) async {
           (message) {
             _handleSignalingMessage(message);
           },
-
-    
 
           onDone: () {
             // print('WebSocket connection closed.');
@@ -478,6 +482,7 @@ Future<void> _launchURL(String urlString) async {
         setState(() {
           // We still show the user the *actual* Wi-Fi/Hotspot IP
           _serverUrl = 'http://$displayIp:$_port';
+          _isServerStarting = false;
         });
       }
       // print('✅ Server running at http://0.0.0.0:$_port (displaying $_serverUrl)');
@@ -500,8 +505,6 @@ Future<void> _launchURL(String urlString) async {
       final answer = await _peerConnection!.createAnswer();
 
       await _peerConnection!.setLocalDescription(answer);
-
-
 
       _sendToPC(answer.toMap());
     } else if (data['type'] == 'candidate') {
@@ -600,6 +603,26 @@ Future<void> _launchURL(String urlString) async {
     await _startServer();
   }
 
+  Future<void> _stopServerOnly() async {
+    // Stop active P2P stream (but DO NOT stop camera)
+    await _peerConnection?.close();
+    _peerConnection = null;
+    _webSocket?.sink.close();
+    _webSocket = null;
+
+    // Stop server
+    await _httpServer?.close(force: true);
+    _httpServer = null;
+
+    if (mounted) {
+      setState(() {
+        _serverUrl = null;
+        _isConnected = false;
+        _isFlashOn = false;
+      });
+    }
+  }
+
   void _sendToPC(Map<String, dynamic> data) {
     if (_webSocket != null) {
       _webSocket!.sink.add(jsonEncode(data));
@@ -626,7 +649,7 @@ Future<void> _launchURL(String urlString) async {
     );
   }
 
-void _showHelpDialog(BuildContext context) {
+  void _showHelpDialog(BuildContext context) {
     // We get the colors from the theme
     final ColorScheme colors = Theme.of(context).colorScheme;
 
@@ -644,18 +667,20 @@ void _showHelpDialog(BuildContext context) {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                  'Make sure your phone and PC are on the same Wi-Fi. The Server will start automatically".\n'),
+                'Make sure your phone and PC are on the same Wi-Fi. The Server will start automatically".\n',
+              ),
               const Text(
                 '2. Connect on PC (OBS/Chrome)',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                  'Copy the "STREAM URL" and paste it into a "Browser" source in OBS(For virtual Camera) or a new Chrome tab.\n'),
+                'Copy the "STREAM URL" and paste it into a "Browser" source in OBS(For virtual Camera) or a new Chrome tab.\n',
+              ),
               const Text(
                 '3. Voila! ',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              
+
               // --- THIS IS THE NEW PART ---
               RichText(
                 text: TextSpan(
@@ -663,11 +688,13 @@ void _showHelpDialog(BuildContext context) {
                   style: Theme.of(context).dialogTheme.contentTextStyle,
                   children: [
                     TextSpan(
-                      text: 'Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+                      text:
+                          'Thank you for using Webcamo! If you find it useful, consider supporting me by ',
                       style: TextStyle(
-                      color: colors.onSurface, // This will be black in light mode and white in dark mode
-                    ),
+                        color: colors
+                            .onSurface, // This will be black in light mode and white in dark mode
                       ),
+                    ),
                     TextSpan(
                       text: 'Buying me a Coffee.',
                       style: TextStyle(
@@ -678,8 +705,7 @@ void _showHelpDialog(BuildContext context) {
                       recognizer: TapGestureRecognizer()
                         ..onTap = () {
                           // Open the link when tapped
-                          _launchURL(
-                              'https://www.buymeacoffee.com/adarsh1o1');
+                          _launchURL('https://www.buymeacoffee.com/adarsh1o1');
                         },
                     ),
                   ],
@@ -699,11 +725,6 @@ void _showHelpDialog(BuildContext context) {
     );
   }
 
-
-
-
-
-
   @override
   Widget build(BuildContext context) {
     final bool isFrontCamera =
@@ -713,7 +734,7 @@ void _showHelpDialog(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final TextTheme text = Theme.of(context).textTheme;
 
-final Color successColor = Theme.of(context).brightness == Brightness.dark
+    final Color successColor = Theme.of(context).brightness == Brightness.dark
         ? Colors.greenAccent[400]! // Bright green for dark mode
         : Colors.green.shade800; // Dark green for light mode
 
@@ -731,12 +752,10 @@ final Color successColor = Theme.of(context).brightness == Brightness.dark
         // ignore: deprecated_member_use
         backgroundColor: colors.surfaceVariant.withOpacity(0.5),
         elevation: 1, // Add a very subtle shadow
-        
         // 1. A nice title with an icon
-title: Row(
+        title: Row(
           mainAxisSize: MainAxisSize.min, // Keep the row compact
           children: [
-        
             // Use RichText to combine different styles
             RichText(
               text: TextSpan(
@@ -752,14 +771,16 @@ title: Row(
                   // The "camo" part
                   TextSpan(
                     text: 'camo',
-                    style: TextStyle(color: colors.onSurfaceVariant), // Lighter Grey/Blue
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                    ), // Lighter Grey/Blue
                   ),
                 ],
               ),
             ),
           ],
         ),
-        
+
         // 2. An "action" button on the right
         actions: [
           IconButton(
@@ -767,7 +788,7 @@ title: Row(
             tooltip: 'Help & Instructions', // Good for accessibility
             onPressed: () {
               // Call the help dialog we just added
-              _showHelpDialog(context); 
+              _showHelpDialog(context);
             },
           ),
           const SizedBox(width: 8), // A bit of padding
@@ -796,11 +817,24 @@ title: Row(
                     ),
                   ),
                 ),
-              if (_serverUrl == null && _hasPermissions)
+              if (_isServerStarting)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(32.0),
                     child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_serverUrl == null)
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: _startServer,
+                    icon: const Icon(Icons.power_settings_new),
+                    label: const Text('Start Server'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
 
@@ -831,7 +865,7 @@ title: Row(
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: colors.primary, 
+                            color: colors.primary,
                             decoration: TextDecoration.underline,
                             // --- AND THIS ---
                             decorationColor: colors.primary,
@@ -904,7 +938,7 @@ title: Row(
                         if (_isInitialized)
                           // 1. Wrap the container in an AspectRatio widget
                           AspectRatio(
-                            aspectRatio: 4 / 3, // 2. Force a 16:9 ratio
+                            aspectRatio: 1 / 1, // 2. Force a 16:9 ratio
                             child: Container(
                               // 3. Remove the fixed height
                               width: double.infinity,
@@ -982,43 +1016,38 @@ title: Row(
                           ),
                         ),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 16,),
 
-                        // Stop and Refresh Buttons
-                        Row(
-                          children: [
-                            // Refresh Button
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _refreshServer,
-                                icon: const Icon(Icons.refresh),
-                                label: const Text('Refresh'),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  foregroundColor: colors.onSurface,
-                                ),
-                              ),
+                        ElevatedButton.icon(
+                          onPressed: _serverUrl == null
+                              ? _startServer
+                              : _stopServerOnly,
+                          icon: Icon(
+                            _serverUrl == null
+                                ? Icons.power_settings_new
+                                : Icons.power_off,
+                          ),
+                          label: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), 
+                            child: Text(
+                              _serverUrl == null ? 'Start Server' : 'Stop Server',
                             ),
-                            const SizedBox(width: 12),
-                            // Stop Stream Button
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: _isConnected ? _stopStream : null,
-                                icon: const Icon(Icons.stop_circle_outlined),
-                                label: const Text('Stop'),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  foregroundColor: colors.onError,
-                                  backgroundColor: colors.error,
-                                ),
-                              ),
+                          ),
+                          
+                          style: ElevatedButton.styleFrom(
+                            // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ],
+                            // minimumSize: Size(150,50),
+                            backgroundColor: _serverUrl == null
+                                ? Colors.greenAccent
+                                : Colors.red.shade700,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
+
                         if (_cameras.length < 2)
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),
@@ -1030,8 +1059,6 @@ title: Row(
                               ),
                             ),
                           ),
-
-                       
                       ],
                     ),
                   ),
