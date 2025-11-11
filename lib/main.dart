@@ -211,7 +211,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      home: const HomePage(),
+      home:  const HomePage(),
     );
   }
 }
@@ -236,8 +236,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isInitialized = false;
   bool _isServerStarting = false;
 
-  Timer? _reconnectTimer;
-  bool _shouldReconnect = true;
+  // Timer? _reconnectTimer;
+  // bool _shouldReconnect = true;
 
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
 
@@ -279,61 +279,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _restartCameraPreview() async {
-    try {      // Recreate camera (fresh pipeline)
+    try {
+      // Recreate camera (fresh pipeline)
       await _initializeLocalPreview();
       if (_peerConnection != null) {
-      // 4. Get the new tracks from the stream that is powering our preview
-      final newVideoTrack = _localStream!.getVideoTracks()[0];
-      // final newAudioTrack = _localStream!.getAudioTracks()[0];
+        // 4. Get the new tracks from the stream that is powering our preview
+        final newVideoTrack = _localStream!.getVideoTracks()[0];
+        // final newAudioTrack = _localStream!.getAudioTracks()[0];
 
-      // 5. Find the "senders" in the P2P connection
-      final senders = await _peerConnection!.getSenders();
-      final videoSender = senders.firstWhere((s) => s.track?.kind == 'video');
-      // final audioSender = senders.firstWhere((s) => s.track?.kind == 'audio');
+        // 5. Find the "senders" in the P2P connection
+        final senders = await _peerConnection!.getSenders();
+        final videoSender = senders.firstWhere((s) => s.track?.kind == 'video');
+        // final audioSender = senders.firstWhere((s) => s.track?.kind == 'audio');
 
-      // 6. Replace the tracks in the connection
-      // print('Replacing tracks on active P2P stream...');
-      await videoSender.replaceTrack(newVideoTrack);
-      // await audioSender.replaceTrack(newAudioTrack);
-    }
+        // 6. Replace the tracks in the connection
+        // print('Replacing tracks on active P2P stream...');
+        await videoSender.replaceTrack(newVideoTrack);
+        // await audioSender.replaceTrack(newAudioTrack);
+      }
 
       // Restore WebRTC if server was running and previously connected
-      if (_serverUrl != null) {
-        _scheduleReconnect(); // From your auto-reconnect setup
-      }
+      // if (_serverUrl != null) {
+      //   _scheduleReconnect(); // From your auto-reconnect setup
+      // }
 
       setState(() {});
     } catch (e) {
       print("Camera restart error: $e");
     }
   }
-
-  void _scheduleReconnect() {
-  // Prevent multiple timers
-  _reconnectTimer?.cancel();
-
-  _reconnectTimer = Timer(const Duration(seconds: 2), () async {
-    if (!_shouldReconnect) return;
-
-    print("🔄 Trying to reconnect...");
-
-    // Restart server if server was running before
-    if (_serverUrl != null && _httpServer == null) {
-      await _startServer();
-    }
-
-    // Restart WebRTC connection if server is active
-    if (_serverUrl != null && !_isConnected) {
-      await _createPeerConnection();
-    }
-  });
-}
-
-
-
-
-
-
 
   Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
@@ -353,17 +327,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _localRenderer.srcObject = null;
 
     try {
-      _localStream = await navigator.mediaDevices.getUserMedia({
-        'audio': false,
-        'video': {
-          'deviceId': _selectedCamera!.deviceId,
-          'mandatory': {
-            'minWidth': '1080',
-            'minHeight': '1080',
-            'maxFrameRate': '30',
+        _localStream = await navigator.mediaDevices.getUserMedia({
+          'audio': false,
+          'video': {
+            'deviceId': _selectedCamera!.deviceId,
+            'width': {'ideal': 720},
+            'height': {'ideal': 720},
+            'aspectRatio': 16 / 9,            // ✅ forces landscape view
+            'resizeMode': 'crop-and-scale'    // ✅ important for correct framing
           },
-        },
-      });
+        });
+
 
       _localRenderer.srcObject = _localStream;
 
@@ -435,9 +409,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     } catch (e) {
       // print("Error toggling flash: $e");
 
-      _showErrorDialog(
-        "Failed to control flash",
-      );
+      _showErrorDialog("Failed to control flash");
 
       setState(() {
         _isFlashOn = false;
@@ -480,7 +452,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _startServer() async {
-    _shouldReconnect = true;
+    // _shouldReconnect = true;
     if (mounted) {
       setState(() {
         _isServerStarting = true;
@@ -494,7 +466,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (ip == null) {
       displayIp = '192.168.43.1'; // Default for hotspot
     }
-
 
     final router = shelf_router.Router();
 
@@ -520,12 +491,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             _handleSignalingMessage(message);
           },
           onDone: () {
-            _isConnected = false;
-            if (_shouldReconnect) _scheduleReconnect();
+            // print('WebSocket connection closed.');
+
+            if (mounted) {
+              setState(() {
+                _isConnected = false;
+              });
+            }
+
+            _stopStream(); // <-- Use our new "Stop" function
           },
+
           onError: (error) {
-            _isConnected = false;
-            if (_shouldReconnect) _scheduleReconnect();
+            if (mounted) {
+              setState(() {
+                _isConnected = false;
+              });
+            }
+
+            _stopStream(); // <-- Use our new "Stop" function
           },
         );
       });
@@ -569,7 +553,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       await _peerConnection!.setLocalDescription(answer);
 
-      _sendToPC(answer.toMap());
+      _sendToPC({
+  "type": "answer",
+  "sdp": answer.sdp,      // ✅ send correct SDP field
+});
     } else if (data['type'] == 'candidate') {
       if (_peerConnection == null) return;
       // print('Received ICE candidate...');
@@ -645,42 +632,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // print("P2P Stream stopped. Local preview remains active.");
   }
 
+  Future<void> _stopServerOnly() async {
 
-
-
-
-Future<void> _stopServerOnly() async {
-  _shouldReconnect = false;
-
-  // ✅ Remove tracks from PeerConnection cleanly
-  if (_peerConnection != null) {
-    final senders = await _peerConnection!.getSenders();
-    for (var sender in senders) {
-      await _peerConnection!.removeTrack(sender);
+    // ✅ Remove tracks from PeerConnection cleanly
+    if (_peerConnection != null) {
+      final senders = await _peerConnection!.getSenders();
+      for (var sender in senders) {
+        await _peerConnection!.removeTrack(sender);
+      }
+      await _peerConnection!.close();
     }
-    await _peerConnection!.close();
+    _peerConnection = null;
+
+    // ✅ Close signaling
+    _webSocket?.sink.close();
+    _webSocket = null;
+
+    // ✅ Stop only the server (NOT the camera)
+    await _httpServer?.close(force: true);
+    _httpServer = null;
+
+    if (mounted) {
+      setState(() {
+        _serverUrl = null;
+        _isConnected = false;
+        _isFlashOn = false;
+      });
+    }
+
+    // ✅ KEEP PREVIEW RUNNING — DO NOT STOP camera tracks here
   }
-  _peerConnection = null;
-
-  // ✅ Close signaling
-  _webSocket?.sink.close();
-  _webSocket = null;
-
-  // ✅ Stop only the server (NOT the camera)
-  await _httpServer?.close(force: true);
-  _httpServer = null;
-
-  if (mounted) {
-    setState(() {
-      _serverUrl = null;
-      _isConnected = false;
-      _isFlashOn = false;
-    });
-  }
-
-  // ✅ KEEP PREVIEW RUNNING — DO NOT STOP camera tracks here
-}
-
 
   void _sendToPC(Map<String, dynamic> data) {
     if (_webSocket != null) {
@@ -997,7 +978,7 @@ Future<void> _stopServerOnly() async {
                         if (_isInitialized)
                           // 1. Wrap the container in an AspectRatio widget
                           AspectRatio(
-                            aspectRatio: 4 / 3,
+                            aspectRatio: 1,
                             child: Container(
                               // 3. Remove the fixed height
                               width: double.infinity,
