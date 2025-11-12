@@ -51,6 +51,7 @@ class AppSizes {
   static final double logo_lg = 210.w;
   static final double logo_xl = 250.w;
   static final double image_lg = 320.h;
+  static final double image_md = 250.h;
   static final double bottomBar = 65.h;
 
   static final double buttonSmall = 165.w;

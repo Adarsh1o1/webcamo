@@ -38,4 +38,10 @@ class MyColors {
     onSurfaceVariant: Color(0xFFB0B0B0),
     outline: Color(0xFF555555),
   );
+
+  static const Color green = Colors.green;
+  static const Color white = Colors.white;
+  static const Color camo = Color.fromARGB(255, 193, 165, 165);
+  static const Color grey = Color.fromARGB(255, 197, 197, 197);
+  static const Color grey01 = Color.fromARGB(255, 39, 39, 39);
 }

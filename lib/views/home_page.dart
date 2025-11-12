@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:shelf/shelf.dart' as shelf;
@@ -15,6 +16,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
+import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/strings.dart';
 
 const String clientHtml = """
 <!DOCTYPE html>
@@ -154,8 +158,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   WebSocketChannel? _webSocket;
   bool _isFlashOn = false;
 
+  bool _isPaused = false;
+
   bool _isInitialized = false;
   bool _isServerStarting = false;
+
+  String _ipAddress = '';
 
   // Timer? _reconnectTimer;
   // bool _shouldReconnect = true;
@@ -170,7 +178,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _localRenderer.initialize();
-    _checkPermissions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkPermissions(); // NOW safe to start camera
+      }
+    });
   }
 
   @override
@@ -192,8 +204,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     //   _peerConnection = null;
     //   _isConnected = false;
     // }
-
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _stopStream(); // or _fullCleanup() if you want to stop server too
+    } else if (state == AppLifecycleState.resumed) {
       // ✅ Recreate camera pipeline on resume
       await _restartCameraPreview();
     }
@@ -235,6 +249,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (!await launchUrl(url)) {
       _showErrorDialog('Could not launch $urlString');
     }
+  }
+
+  Future<void> _pauseStream() async {
+    if (_isPaused == false) {
+      _restartCameraPreview();
+    }
+    _localStream?.getTracks().forEach((track) {
+      track.stop();
+    });
+
+    await _localStream?.dispose();
+    _localRenderer.srcObject = null;
+    final newPauseState = !_isPaused;
+    setState(() {
+      _isPaused = newPauseState;
+    });
   }
 
   Future<void> _initializeLocalPreview() async {
@@ -312,7 +342,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _showErrorDialog("No cameras found on this device.");
       }
 
-      await _startServer();
+      // await _startServer();
     } else {
       _hasPermissions = false;
       _showErrorDialog("Camera and Microphone permissions are required.");
@@ -455,6 +485,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           // We still show the user the *actual* Wi-Fi/Hotspot IP
           _serverUrl = 'http://$displayIp:$_port';
           _isServerStarting = false;
+          _ipAddress = displayIp!;
         });
       }
       // print('✅ Server running at http://0.0.0.0:$_port (displaying $_serverUrl)');
@@ -557,35 +588,35 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // print("P2P Stream stopped. Local preview remains active.");
   }
 
-  Future<void> _stopServerOnly() async {
-    // ✅ Remove tracks from PeerConnection cleanly
-    if (_peerConnection != null) {
-      final senders = await _peerConnection!.getSenders();
-      for (var sender in senders) {
-        await _peerConnection!.removeTrack(sender);
-      }
-      await _peerConnection!.close();
-    }
-    _peerConnection = null;
+  // Future<void> _stopServerOnly() async {
+  //   // ✅ Remove tracks from PeerConnection cleanly
+  //   if (_peerConnection != null) {
+  //     final senders = await _peerConnection!.getSenders();
+  //     for (var sender in senders) {
+  //       await _peerConnection!.removeTrack(sender);
+  //     }
+  //     await _peerConnection!.close();
+  //   }
+  //   _peerConnection = null;
 
-    // ✅ Close signaling
-    _webSocket?.sink.close();
-    _webSocket = null;
+  //   // ✅ Close signaling
+  //   _webSocket?.sink.close();
+  //   _webSocket = null;
 
-    // ✅ Stop only the server (NOT the camera)
-    await _httpServer?.close(force: true);
-    _httpServer = null;
+  //   // ✅ Stop only the server (NOT the camera)
+  //   await _httpServer?.close(force: true);
+  //   _httpServer = null;
 
-    if (mounted) {
-      setState(() {
-        _serverUrl = null;
-        _isConnected = false;
-        _isFlashOn = false;
-      });
-    }
+  //   if (mounted) {
+  //     setState(() {
+  //       _serverUrl = null;
+  //       _isConnected = false;
+  //       _isFlashOn = false;
+  //     });
+  //   }
 
-    // ✅ KEEP PREVIEW RUNNING — DO NOT STOP camera tracks here
-  }
+  //   // ✅ KEEP PREVIEW RUNNING — DO NOT STOP camera tracks here
+  // }
 
   void _sendToPC(Map<String, dynamic> data) {
     if (_webSocket != null) {
@@ -710,6 +741,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final Color surfaceColor = colors.surfaceContainerHighest.withOpacity(0.7);
 
     return Scaffold(
+      backgroundColor: MyColors.lightColorScheme.primary,
       appBar: AppBar(
         // Use a subtle background color that's slightly
         // different from the scaffold's background
@@ -718,32 +750,47 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         elevation: 1, // Add a very subtle shadow
         // 1. A nice title with an icon
         title: Row(
-          mainAxisSize: MainAxisSize.min, // Keep the row compact
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Use RichText to combine different styles
-            RichText(
-              text: TextSpan(
-                // This is the default style for all text in this widget
-                // It takes the style from your theme
-                style: text.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                children: <TextSpan>[
-                  // The "Web" part
-                  TextSpan(
-                    text: 'Web',
-                    style: TextStyle(color: colors.primary), // Dark Teal/Grey
-                  ),
-                  // The "camo" part
-                  TextSpan(
-                    text: 'camo',
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                    ), // Lighter Grey/Blue
-                  ),
-                ],
-              ),
-            ),
+            Image.asset(AppStrings.appLogoWithoutBg, height: AppSizes.icon_md),
+            // SizedBox(width: 12.sp),
+            // Text(
+            //   'Webcamo',
+            //   style: TextStyle(
+            //     fontSize: AppSizes.font_lg,
+            //     fontWeight: FontWeight.bold,
+            //   ),
+            // ),
+            // RichText(
+            //   text: TextSpan(
+            //     children: [
+            //       TextSpan(
+            //         text: 'Web',
+            //         style: TextStyle(
+            //           fontSize: AppSizes.font_lg,
+            //           fontWeight: FontWeight.bold,
+            //         ),
+            //       ),
+            //       TextSpan(
+            //         text: 'camo',
+            //         style: TextStyle(
+            //           fontSize: AppSizes.font_lg,
+            //           fontWeight: FontWeight.bold,
+            //           color: MyColors.camo,
+            //         ),
+            //       ),
+            //     ],
+            //   ),
+            // ),
           ],
         ),
+        // title: Text(
+        //   'Webcamo',
+        //   style: TextStyle(
+        //     fontSize: AppSizes.font_lg,
+        //     fontWeight: FontWeight.bold,
+        //   ),
+        // ),
 
         // 2. An "action" button on the right
         actions: [
@@ -760,7 +807,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(AppSizes.p16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -789,17 +836,92 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   ),
                 )
               else if (_serverUrl == null)
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: _startServer,
-                    icon: const Icon(Icons.power_settings_new),
-                    label: const Text('Start Server'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
+                // Center(
+                //   child: ElevatedButton.icon(
+                //     onPressed: _startServer,
+                //     icon: const Icon(Icons.power_settings_new),
+                //     label: const Text('Start Server'),
+                //     style: ElevatedButton.styleFrom(
+                //       padding: const EdgeInsets.symmetric(vertical: 14),
+                //       backgroundColor: Colors.green,
+                //       foregroundColor: Colors.white,
+                //     ),
+                //   ),
+                // ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Icon(
+                        Icons.android_rounded,
+                        size: AppSizes.image_md,
+                        color: MyColors.lightColorScheme.onSurfaceVariant
+                            .withOpacity(0.4),
+                      ),
                     ),
-                  ),
+                    Center(
+                      child: ElevatedButton.icon(
+                        onPressed: _serverUrl == null
+                            ? _startServer
+                            : _fullCleanup,
+                        icon: Icon(
+                          _serverUrl == null
+                              ? Icons.power_settings_new
+                              : Icons.power_off,
+                        ),
+                        label: Text(
+                          _serverUrl == null ? 'Start Server' : 'Stop Server',
+                        ),
+
+                        style: ElevatedButton.styleFrom(
+                          // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          textStyle: TextStyle(
+                            fontSize: AppSizes.font_sm,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          // minimumSize: Size(150,50),
+                          backgroundColor: _serverUrl == null
+                              ? MyColors.green
+                              : Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 50.sp),
+                    Text(
+                      'Instructions to use:',
+                      style: TextStyle(
+                        fontSize: AppSizes.font_md,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                        color: MyColors.grey,
+                        decorationColor: MyColors.grey,
+                      ),
+                    ),
+                    SizedBox(height: 10.sp),
+                    const BulletListItem(
+                      text:
+                          'Tap on Start Server button above to start the server.',
+                    ),
+                    const BulletListItem(
+                      text: 'Wait until the app shows the Stream IP.',
+                    ),
+                    const BulletListItem(
+                      text:
+                          'Make sure your phone and PC are on the same Local Wi-Fi  network. On your PC, open the Webcamo Desktop client.',
+                    ),
+                    const BulletListItem(
+                      text: 'Enter the Stream IP displayed on your phone.',
+                    ),
+                    const BulletListItem(
+                      text:
+                          'Click Connect, your phone camera will appear on screen.',
+                    ),
+                    const BulletListItem(
+                      text:
+                          'Webcamo will now act as a virtual webcam for any app(Zoom, OBS, Discord, Google Meet, etc.).',
+                    ),
+                  ],
                 ),
 
               // --- FIX 4: Correct UI Layout ---
@@ -817,61 +939,156 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'STREAM URL (Copy link & open in browser/OBS)',
-                          style: text.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'WiFi IP: ',
+                                style: TextStyle(
+                                  fontSize: AppSizes.font_md,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _ipAddress,
+                                style: TextStyle(
+                                  fontSize: AppSizes.font_md,
+                                  color: MyColors.white.withOpacity(0.8),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        SelectableText(
-                          _serverUrl!,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: colors.primary,
-                            decoration: TextDecoration.underline,
-                            // --- AND THIS ---
-                            decorationColor: colors.primary,
+                        SizedBox(height: 10.sp),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Browser: ',
+                                style: TextStyle(
+                                  fontSize: AppSizes.font_md,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _serverUrl,
+                                style: TextStyle(
+                                  fontSize: AppSizes.font_md,
+                                  color: MyColors.white.withOpacity(0.8),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                          textAlign: TextAlign.left,
                         ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'STATUS',
-                          style: text.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              _isConnected
-                                  ? Icons.check_circle_rounded
-                                  : Icons.warning_amber_rounded,
-                              color: _isConnected ? successColor : errorColor,
-                              size: 24,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _isConnected
+                        // const SizedBox(height: 8),
+                        // SelectableText(
+                        //   _ipAddress,
+                        //   style: TextStyle(
+                        //     fontSize: AppSizes.font_xl,
+                        //     decoration: TextDecoration.underline,
+                        //     decorationColor: MyColors.lightColorScheme.onSurfaceVariant
+                        //   ),
+                        // ),
+                        SizedBox(height: 10.sp),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: 'Status: ',
+                                style: TextStyle(
+                                  fontSize: AppSizes.font_md,
+                                  fontWeight: FontWeight.bold,
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                              TextSpan(
+                                text: _isConnected
                                     ? 'DEVICE CONNECTED'
                                     : 'AWAITING CONNECTION',
                                 style: text.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 20,
+                                  fontSize: AppSizes.font_md,
                                   color: _isConnected
                                       ? successColor
                                       : errorColor,
                                 ),
-                                softWrap: true,
                               ),
+                            ],
+                          ),
+                        ),
+                        // const SizedBox(height: 8),
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.start,
+                        //   crossAxisAlignment: CrossAxisAlignment.start,
+                        //   children: [
+                        //     Icon(
+                        //       _isConnected
+                        //           ? Icons.check_circle_rounded
+                        //           : Icons.warning_amber_rounded,
+                        //       color: _isConnected ? successColor : errorColor,
+                        //       size: 24,
+                        //     ),
+                        //     const SizedBox(width: 12),
+                        //     Expanded(
+                        //       child: Text(
+                        //         _isConnected
+                        //             ? 'DEVICE CONNECTED'
+                        //             : 'AWAITING CONNECTION',
+                        //         style: text.titleLarge?.copyWith(
+                        //           fontWeight: FontWeight.bold,
+                        //           fontSize: 20,
+                        //           color: _isConnected
+                        //               ? successColor
+                        //               : errorColor,
+                        //         ),
+                        //         softWrap: true,
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
+                        SizedBox(height: 20.sp),
+                        ElevatedButton.icon(
+                          onPressed: _serverUrl == null
+                              ? _startServer
+                              : _fullCleanup,
+                          label: Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 70.sp,
+                              vertical: 4,
                             ),
-                          ],
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _serverUrl == null
+                                      ? Icons.power_settings_new
+                                      : Icons.power_off,
+                                ),
+                                SizedBox(width: 10.w),
+                                Text(
+                                  _serverUrl == null
+                                      ? 'Start Server'
+                                      : 'Stop Server',
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          style: ElevatedButton.styleFrom(
+                            // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            // minimumSize: Size(150,50),
+                            backgroundColor: _serverUrl == null
+                                ? Colors.greenAccent
+                                : Colors.red.shade700,
+                            foregroundColor: Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -934,89 +1151,68 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ),
                         const SizedBox(height: 16),
                         // Switch Camera Button
-                        ElevatedButton.icon(
-                          onPressed: _cameras.length < 2 ? null : _switchCamera,
-                          icon: const Icon(Icons.switch_camera_outlined),
-                          label: Text(
-                            _selectedCamera?.label.toLowerCase().contains(
-                                      'back',
-                                    ) ??
-                                    false
-                                ? 'Switch to Front Camera'
-                                : 'Switch to Back Camera',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            GestureDetector(
+                              onTap: _cameras.length < 2 ? null : _switchCamera,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: MyColors.lightColorScheme.primary,
+                                  borderRadius: BorderRadius.circular(
+                                    AppSizes.radius_full,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppSizes.p16),
+                                  child: Icon(Icons.switch_camera_outlined),
+                                ),
+                              ),
                             ),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                            GestureDetector(
+                              onTap: _toggleFlash,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _isFlashOn
+                                      ? Colors.yellow.shade800
+                                      : MyColors.lightColorScheme.primary,
+                                  borderRadius: BorderRadius.circular(
+                                    AppSizes.radius_full,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppSizes.p16),
+                                  child: Icon(
+                                    _isFlashOn
+                                        ? Icons.flash_on
+                                        : Icons.flash_off,
+                                    color: MyColors.white,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            GestureDetector(
+                              onTap: _pauseStream,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _isPaused
+                                      ? MyColors.lightColorScheme.primary
+                                      : Colors.red,
+                                  borderRadius: BorderRadius.circular(
+                                    AppSizes.radius_full,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.all(AppSizes.p16),
+                                  child: Icon(
+                                    _isPaused ? Icons.pause : Icons.play_arrow,
+                                    color: MyColors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          // Disable if streaming or if front camera is on
-                          onPressed: _isConnected ? _toggleFlash : null,
-                          icon: Icon(
-                            _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                          ),
-                          label: Text(_isFlashOn ? 'Flash ON' : 'Flash OFF'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            // Optional: Change color based on state
-                            backgroundColor: _isFlashOn
-                                ? Colors.yellow.shade800
-                                : null,
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        ElevatedButton.icon(
-                          onPressed: _serverUrl == null
-                              ? _startServer
-                              : _stopServerOnly,
-                          icon: Icon(
-                            _serverUrl == null
-                                ? Icons.power_settings_new
-                                : Icons.power_off,
-                          ),
-                          label: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            child: Text(
-                              _serverUrl == null
-                                  ? 'Start Server'
-                                  : 'Stop Server',
-                            ),
-                          ),
-
-                          style: ElevatedButton.styleFrom(
-                            // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            textStyle: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            // minimumSize: Size(150,50),
-                            backgroundColor: _serverUrl == null
-                                ? Colors.greenAccent
-                                : Colors.red.shade700,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-
                         if (_cameras.length < 2)
                           Padding(
                             padding: const EdgeInsets.only(top: 12.0),
@@ -1036,6 +1232,43 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class BulletListItem extends StatelessWidget {
+  final String text;
+
+  const BulletListItem({super.key, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // The bullet point
+          Text(
+            "• ",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: AppSizes.font_md,
+              color: MyColors.grey,
+            ),
+          ),
+          SizedBox(width: 10.sp),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: AppSizes.font_sm,
+                color: MyColors.grey,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
