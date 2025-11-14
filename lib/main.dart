@@ -211,7 +211,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      home:  const HomePage(),
+      home: const HomePage(),
     );
   }
 }
@@ -327,17 +327,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _localRenderer.srcObject = null;
 
     try {
-        _localStream = await navigator.mediaDevices.getUserMedia({
-          'audio': false,
-          'video': {
-            'deviceId': _selectedCamera!.deviceId,
-            'width': {'ideal': 720},
-            'height': {'ideal': 720},
-            'aspectRatio': 16 / 9,            // ✅ forces landscape view
-            'resizeMode': 'crop-and-scale'    // ✅ important for correct framing
+      _localStream = await navigator.mediaDevices.getUserMedia({
+        'audio': false,
+        'video': {
+          'deviceId': _selectedCamera!.deviceId,
+          'mandatory': {
+            'minWidth': '1080',
+            'minHeight': '1080',
+            'maxFrameRate': '30',
           },
-        });
-
+        },
+      });
 
       _localRenderer.srcObject = _localStream;
 
@@ -554,9 +554,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       await _peerConnection!.setLocalDescription(answer);
 
       _sendToPC({
-  "type": "answer",
-  "sdp": answer.sdp,      // ✅ send correct SDP field
-});
+        "type": "answer",
+        "sdp": answer.sdp, // ✅ send correct SDP field
+      });
     } else if (data['type'] == 'candidate') {
       if (_peerConnection == null) return;
       // print('Received ICE candidate...');
@@ -572,7 +572,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _createPeerConnection() async {
     _peerConnection = await createPeerConnection({
-      'iceServers': [], // An empty list
+      'iceServers': [{ 'urls': "stun:stun.l.google.com:19302" }],
+      'iceTransportPolicy': 'all' // An empty list
     });
 
     if (_localStream == null) {
@@ -633,7 +634,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _stopServerOnly() async {
-
     // ✅ Remove tracks from PeerConnection cleanly
     if (_peerConnection != null) {
       final senders = await _peerConnection!.getSenders();
@@ -993,7 +993,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                   _localRenderer,
                                   // 4. Set objectFit back to Cover
                                   objectFit: RTCVideoViewObjectFit
-                                      .RTCVideoViewObjectFitCover,
+                                      .RTCVideoViewObjectFitContain,
                                   mirror: isFrontCamera,
                                 ),
                               ),
