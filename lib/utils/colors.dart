@@ -44,4 +44,5 @@ class MyColors {
   static const Color camo = Color.fromARGB(255, 193, 165, 165);
   static const Color grey = Color.fromARGB(255, 197, 197, 197);
   static const Color grey01 = Color.fromARGB(255, 39, 39, 39);
+  static const Color red = Colors.red;
 }

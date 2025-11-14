@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart' as shelf_router;
@@ -165,6 +166,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   String _ipAddress = '';
 
+  bool _canToggleFlash = false;
+
+  PermissionStatus _permissionStatus = PermissionStatus.denied;
+
+  SharedPreferences? _sharedPreferences;
   // Timer? _reconnectTimer;
   // bool _shouldReconnect = true;
 
@@ -177,12 +183,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _checkPermissions();
+    // NOW safe to start camera
     _localRenderer.initialize();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _checkPermissions(); // NOW safe to start camera
-      }
-    });
   }
 
   @override
@@ -252,19 +255,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _pauseStream() async {
-    if (_isPaused == false) {
-      _restartCameraPreview();
-    }
     _localStream?.getTracks().forEach((track) {
       track.stop();
     });
-
     await _localStream?.dispose();
-    _localRenderer.srcObject = null;
     final newPauseState = !_isPaused;
+    _localRenderer.srcObject = null;
     setState(() {
       _isPaused = newPauseState;
     });
+    if (_isPaused == false) {
+      _restartCameraPreview();
+    }
   }
 
   Future<void> _initializeLocalPreview() async {
@@ -310,10 +312,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Future<void> _checkPermissions() async {
     var cameraStatus = await Permission.camera.request();
     var micStatus = await Permission.microphone.request();
+    _sharedPreferences = await SharedPreferences.getInstance();
     if (cameraStatus.isGranted && micStatus.isGranted) {
       if (mounted) {
         setState(() {
           _hasPermissions = true;
+          _sharedPreferences?.setBool('hasPermissions', true);
         });
       }
 
@@ -345,6 +349,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       // await _startServer();
     } else {
       _hasPermissions = false;
+      _sharedPreferences?.setBool('hasPermissions', false);
       _showErrorDialog("Camera and Microphone permissions are required.");
     }
   }
@@ -356,11 +361,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final videoTrack = _localStream!.getVideoTracks()[0];
       final newFlashState = !_isFlashOn;
 
-      await videoTrack.setTorch(newFlashState);
-
+      final videoTrackFirst = _localStream!.getVideoTracks().first;
+      final hasTorch = await videoTrackFirst.hasTorch();
       setState(() {
-        _isFlashOn = newFlashState;
+        _canToggleFlash = hasTorch;
       });
+
+      await videoTrack.setTorch(newFlashState);
+      if (_canToggleFlash) {
+        setState(() {
+          _isFlashOn = newFlashState;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Flash not available.',
+              style: TextStyle(fontSize: AppSizes.font_sm),
+            ),
+          ),
+        );
+      }
     } catch (e) {
       // print("Error toggling flash: $e");
 
@@ -369,6 +390,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       setState(() {
         _isFlashOn = false;
       });
+    }
+  }
+
+  Future<void> _requestPermission() async {
+    var cameraStatus = await Permission.camera.isPermanentlyDenied;
+    var micStatus = await Permission.microphone.isPermanentlyDenied;
+    setState(() {
+      _permissionStatus = (cameraStatus || micStatus)
+          ? PermissionStatus.permanentlyDenied
+          : PermissionStatus.granted;
+    });
+    print(cameraStatus);
+    print(micStatus);
+    print(_permissionStatus);
+
+    if (_permissionStatus == PermissionStatus.permanentlyDenied) {
+      print("Status is permanently denied. Opening settings.");
+      await openAppSettings();
+      _checkPermissions();
     }
   }
 
@@ -569,6 +609,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _serverUrl = null;
         _isConnected = false;
         _isFlashOn = false;
+        _isPaused = false;
       });
     }
   }
@@ -813,18 +854,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // --- Logic for Permissions and Loading ---
-              if (!_hasPermissions)
-                Card(
-                  color: colors.errorContainer,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Please grant Camera & Mic permissions and restart the app.',
-                      style: text.bodyLarge?.copyWith(
-                        color: colors.onErrorContainer,
-                        fontWeight: FontWeight.bold,
+              if (_sharedPreferences?.getBool('hasPermissions') == false)
+                GestureDetector(
+                  onTap: () => _requestPermission(),
+                  child: Card(
+                    color: colors.errorContainer,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Permissions not granted, click here to allow.',
+                        style: TextStyle(
+                          fontSize: AppSizes.font_sm,
+                          color: MyColors.lightColorScheme.primary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
                     ),
                   ),
                 ),
@@ -945,7 +989,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               TextSpan(
                                 text: 'WiFi IP: ',
                                 style: TextStyle(
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   fontWeight: FontWeight.bold,
                                   color: colors.onSurfaceVariant,
                                 ),
@@ -953,7 +997,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               TextSpan(
                                 text: _ipAddress,
                                 style: TextStyle(
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   color: MyColors.white.withOpacity(0.8),
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -968,7 +1012,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               TextSpan(
                                 text: 'Browser: ',
                                 style: TextStyle(
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   fontWeight: FontWeight.bold,
                                   color: colors.onSurfaceVariant,
                                 ),
@@ -976,7 +1020,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               TextSpan(
                                 text: _serverUrl,
                                 style: TextStyle(
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   color: MyColors.white.withOpacity(0.8),
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1000,7 +1044,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               TextSpan(
                                 text: 'Status: ',
                                 style: TextStyle(
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   fontWeight: FontWeight.bold,
                                   color: colors.onSurfaceVariant,
                                 ),
@@ -1011,7 +1055,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                     : 'AWAITING CONNECTION',
                                 style: text.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: AppSizes.font_md,
+                                  fontSize: AppSizes.font_sm,
                                   color: _isConnected
                                       ? successColor
                                       : errorColor,
@@ -1085,8 +1129,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             ),
                             // minimumSize: Size(150,50),
                             backgroundColor: _serverUrl == null
-                                ? Colors.greenAccent
-                                : Colors.red.shade700,
+                                ? MyColors.green
+                                : MyColors.red,
                             foregroundColor: Colors.white,
                           ),
                         ),
@@ -1197,15 +1241,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 decoration: BoxDecoration(
                                   color: _isPaused
                                       ? MyColors.lightColorScheme.primary
-                                      : Colors.red,
+                                      : Colors.yellow.shade800,
                                   borderRadius: BorderRadius.circular(
                                     AppSizes.radius_full,
                                   ),
                                 ),
                                 child: Padding(
                                   padding: EdgeInsets.all(AppSizes.p16),
+                                  // child: _isPaused
+                                  //     ? Text('Start')
+                                  //     : Text('Stop'),
                                   child: Icon(
-                                    _isPaused ? Icons.pause : Icons.play_arrow,
+                                    _isPaused ? Icons.play_arrow : Icons.stop,
                                     color: MyColors.white,
                                   ),
                                 ),
