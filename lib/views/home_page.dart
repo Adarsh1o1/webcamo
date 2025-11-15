@@ -254,21 +254,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _pauseStream() async {
-    _localStream?.getTracks().forEach((track) {
-      track.stop();
-    });
-    await _localStream?.dispose();
-    final newPauseState = !_isPaused;
-    _localRenderer.srcObject = null;
-    setState(() {
-      _isPaused = newPauseState;
-    });
-    if (_isPaused == false) {
-      _restartCameraPreview();
-    }
-  }
-
   Future<void> _initializeLocalPreview() async {
     if (_selectedCamera == null) return;
 
@@ -284,11 +269,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         'audio': false,
         'video': {
           'deviceId': _selectedCamera!.deviceId,
-          'mandatory': {
-            'minWidth': '1080',
-            'minHeight': '1080',
+          // 'mandatory': {
+          //   'minWidth': '2160',
+          //   'minHeight': '2160',
+            'minFrameRate': '30',
             'maxFrameRate': '30',
-          },
+          // },
           // 'width': {'ideal': 720},
           // 'height': {'ideal': 720},
           // 'aspectRatio': 16 / 9,            // ✅ forces landscape view
@@ -356,27 +342,34 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _toggleFlash() async {
     if (_localStream == null || _localStream!.getVideoTracks().isEmpty) return;
+    if (_isPaused) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Start stream first.',
+            style: TextStyle(fontSize: AppSizes.font_sm),
+          ),
+        ),
+      );
+
+      return;
+    }
 
     try {
+      final bool isFrontCamera =
+          _selectedCamera?.label.toLowerCase().contains('front') ?? false;
       final videoTrack = _localStream!.getVideoTracks()[0];
       final newFlashState = !_isFlashOn;
-
-      final videoTrackFirst = _localStream!.getVideoTracks().first;
-      final hasTorch = await videoTrackFirst.hasTorch();
+      await videoTrack.setTorch(newFlashState);
       setState(() {
-        _canToggleFlash = hasTorch;
+        _isFlashOn = newFlashState;
       });
 
-      await videoTrack.setTorch(newFlashState);
-      if (_canToggleFlash) {
-        setState(() {
-          _isFlashOn = newFlashState;
-        });
-      } else {
+      if (isFrontCamera && _isFlashOn) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Flash not available.',
+              'Flash may not be supported on front camera.',
               style: TextStyle(fontSize: AppSizes.font_sm),
             ),
           ),
@@ -384,13 +377,45 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
     } catch (e) {
       // print("Error toggling flash: $e");
-
-      _showErrorDialog("Failed to control flash");
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Flash not available.',
+            style: TextStyle(fontSize: AppSizes.font_sm),
+          ),
+        ),
+      );
       setState(() {
         _isFlashOn = false;
       });
     }
+  }
+
+
+  Future<void> _pauseStream() async {
+    print('is flash on $_isFlashOn');
+    print('is paused on $_isPaused');
+    if (!_isPaused) {
+      _localStream?.getTracks().forEach((track) {
+        track.stop();
+      });
+      await _localStream?.dispose();
+      final newPauseState = !_isPaused;
+      _localRenderer.srcObject = null;
+      setState(() {
+        _isFlashOn = false;
+        _isPaused = newPauseState;
+      });
+    } else {
+      final newPauseState = !_isPaused;
+      setState(() {
+        _isFlashOn = false;
+        _isPaused = newPauseState;
+      });
+      _restartCameraPreview();
+    }
+    print('is flash on $_isFlashOn');
+    print('is paused on $_isPaused');
   }
 
   Future<void> _requestPermission() async {
@@ -414,6 +439,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _switchCamera() async {
     if (_cameras.length < 2 || _selectedCamera == null) return;
+    if (_isPaused) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Start stream first.',
+            style: TextStyle(fontSize: AppSizes.font_sm),
+          ),
+        ),
+      );
+
+      return;
+    }
 
     // 1. Select the next camera
     int currentIndex = _cameras.indexWhere(
@@ -590,6 +627,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   // --- NEW: This function stops EVERYTHING (server, stream, camera) ---
   Future<void> _fullCleanup() async {
     await _stopStream(); // Stop the P2P connection
+    await _pauseStream();
 
     // Stop the local camera stream
     _localStream?.getTracks().forEach((track) {
@@ -703,15 +741,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                'Make sure your phone and PC are on the same Wi-Fi. The Server will start automatically".\n',
+                'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
               ),
               const Text(
-                '2. Connect on PC (OBS/Chrome)',
+                '2. Connect on PC',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Text(
-                'Copy the "STREAM URL" and paste it into a "Browser" source in OBS(For virtual Camera) or a new Chrome tab.\n',
+                'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
               ),
+              const Text(
+                'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              // const Text(
+              //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+              // ),
               const Text(
                 '3. Voila! ',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -725,7 +770,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   children: [
                     TextSpan(
                       text:
-                          'Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+                          'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
                       style: TextStyle(
                         color: colors
                             .onSurface, // This will be black in light mode and white in dark mode
@@ -945,25 +990,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     SizedBox(height: 10.sp),
                     const BulletListItem(
                       text:
-                          'Tap on Start Server button above to start the server.',
+                          'Tap on Start Server to start the server.',
                     ),
                     const BulletListItem(
-                      text: 'Wait until the app shows the Stream IP.',
-                    ),
-                    const BulletListItem(
-                      text:
-                          'Make sure your phone and PC are on the same Local Wi-Fi  network. On your PC, open the Webcamo Desktop client.',
-                    ),
-                    const BulletListItem(
-                      text: 'Enter the Stream IP displayed on your phone.',
+                      text: 'Wait until the app shows the WiFi IP.',
                     ),
                     const BulletListItem(
                       text:
-                          'Click Connect, your phone camera will appear on screen.',
+                          'Make sure your phone and PC are on the same Local Wi-Fi network only.',
+                    ),
+                    const BulletListItem(
+                      text: 'On your PC, open the Webcamo Desktop client. Click here to setup on pc',
                     ),
                     const BulletListItem(
                       text:
-                          'Webcamo will now act as a virtual webcam for any app(Zoom, OBS, Discord, Google Meet, etc.).',
+                          'Enter the WiFi IP displayed on your phone and click connect.',
+                    ),
+                    const BulletListItem(
+                      text:
+                          'Your phone camera will appear on screen. Webcamo will now act as a virtual webcam for any app (Zoom, OBS, Discord, Google, Meet, etc.)',
                     ),
                   ],
                 ),
