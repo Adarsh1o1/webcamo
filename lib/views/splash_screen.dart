@@ -97,59 +97,68 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final double logoSize = AppSizes.logo_md;
 
-    return Scaffold(
-      backgroundColor: MyColors.lightColorScheme.primary,
-      body: Stack(
-        children: [
-          // ------------------- Logo -------------------
-          Center(
-            child: Image.asset(AppStrings.appLogoWithoutBg, height: logoSize),
-          ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        systemNavigationBarColor: MyColors.lightColorScheme.primary,
+        systemNavigationBarDividerColor: MyColors.lightColorScheme.primary,
+        statusBarColor: MyColors.lightColorScheme.primary,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: MyColors.lightColorScheme.primary,
+        body: Stack(
+          children: [
+            // ------------------- Logo -------------------
+            Center(
+              child: Image.asset(AppStrings.appLogoWithoutBg, height: logoSize),
+            ),
 
-          // ------------------- Ripple waves -------------------
-          Center(
-            child: AnimatedBuilder(
-              animation: Listenable.merge([_rippleCtrl1, _rippleCtrl2]),
+            // ------------------- Ripple waves -------------------
+            Center(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_rippleCtrl1, _rippleCtrl2]),
+                builder: (_, __) {
+                  return CustomPaint(
+                    size: Size.infinite,
+                    painter: _RipplePainter(
+                      radius1: logoSize / 2 * (1 + _rippleAnim1.value * 2),
+                      opacity1: 1 - _rippleAnim1.value,
+                      radius2: logoSize / 2 * (1 + _rippleAnim2.value * 2),
+                      opacity2: 1 - _rippleAnim2.value,
+                      color: MyColors.backgund,
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // ------------------- Expanding circle -------------------
+            AnimatedBuilder(
+              animation: _expandAnim,
               builder: (_, __) {
-                return CustomPaint(
-                  size: Size.infinite,
-                  painter: _RipplePainter(
-                    radius1: logoSize / 2 * (1 + _rippleAnim1.value * 2),
-                    opacity1: 1 - _rippleAnim1.value,
-                    radius2: logoSize / 2 * (1 + _rippleAnim2.value * 2),
-                    opacity2: 1 - _rippleAnim2.value,
-                    color: MyColors.green,
+                final size = MediaQuery.of(context).size;
+                final double maxRadius =
+                    math.sqrt(
+                      size.width * size.width + size.height * size.height,
+                    ) /
+                    2;
+
+                final double currentRadius = maxRadius * _expandAnim.value;
+
+                return Center(
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: _CircleFillPainter(
+                      radius: currentRadius,
+                      color: MyColors.backgund,
+                    ),
                   ),
                 );
               },
             ),
-          ),
-
-          // ------------------- Expanding circle -------------------
-          AnimatedBuilder(
-            animation: _expandAnim,
-            builder: (_, __) {
-              final size = MediaQuery.of(context).size;
-              final double maxRadius =
-                  math.sqrt(
-                    size.width * size.width + size.height * size.height,
-                  ) /
-                  2;
-
-              final double currentRadius = maxRadius * _expandAnim.value;
-
-              return Center(
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: _CircleFillPainter(
-                    radius: currentRadius,
-                    color: MyColors.green,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

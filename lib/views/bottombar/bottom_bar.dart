@@ -5,11 +5,11 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/providers/settings_provider.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/views/bottombar/bottom_bar_controller.dart';
-import 'package:webcamo/views/home/home_screen.dart';
 import 'package:webcamo/views/home_page.dart';
 import 'package:webcamo/views/settings/settings_page.dart'; // <-- NEW
 import 'package:webcamo/views/usb/usb_page.dart'; // <-- NEW
@@ -35,8 +35,6 @@ class _BottomBarState extends ConsumerState<BottomBar> {
   // Titles for the AppBar
   static const List<String> _titles = ['Webcamo', 'USB Connection', 'Settings'];
 
-
-
   @override
   void initState() {
     super.initState();
@@ -46,12 +44,67 @@ class _BottomBarState extends ConsumerState<BottomBar> {
     });
   }
 
-    Future<void> _launchURL(String urlString) async {
+  Future<void> _launchURL(String urlString) async {
     final Uri url = Uri.parse(urlString);
     launchUrl(url);
     // if (!await ) {
     //   _showErrorDialog('Could not launch $urlString');
     // }
+  }
+
+  Future<bool> _showServerWarningDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Server Running'),
+        content: const Text(
+          'The server is currently active. Navigating away will stop the server and disconnect any connected devices.\n\nAre you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Stop & Leave'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  Future<void> _handleNavigation(int newIndex) async {
+    // If trying to leave home page and server is running
+    if (_currentIndex == 0 && newIndex != 0) {
+      final isServerRunning = ref.read(isServerRunningProvider);
+
+      if (isServerRunning) {
+        // Show confirmation dialog
+        final shouldProceed = await _showServerWarningDialog();
+
+        if (shouldProceed) {
+          // User confirmed - stop server and cleanup
+          if (mounted) {
+            setState(() {
+              _currentIndex = newIndex;
+            });
+          }
+        }
+        // If user cancels, stay on home page (do nothing)
+        return;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _currentIndex = newIndex;
+      });
+    }
   }
 
   void _showHelpDialog(BuildContext context) {
@@ -166,13 +219,15 @@ class _BottomBarState extends ConsumerState<BottomBar> {
         // Use a subtle background color that's slightly
         // different from the scaffold's background
         // ignore: deprecated_member_use
-        backgroundColor:  MyColors.backgund,
+        backgroundColor: MyColors.backgund,
         elevation: 1, // Add a very subtle shadow
-        title: Text(_titles[_currentIndex],
-         style: TextStyle(
-                fontSize: AppSizes.font_lg,
-                fontWeight: FontWeight.bold,
-              ),),
+        title: Text(
+          _titles[_currentIndex],
+          style: TextStyle(
+            fontSize: AppSizes.font_lg,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         // elevation: 0,
         actions: [
           IconButton(
@@ -181,17 +236,13 @@ class _BottomBarState extends ConsumerState<BottomBar> {
             },
             icon: const Icon(Icons.help_outline_rounded),
           ),
-         const SizedBox(width: 8), 
+          const SizedBox(width: 8),
         ],
       ),
       body: _pages[_currentIndex], // Show current page
       bottomNavigationBar: BottomBarController(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index; // Update current index
-          });
-        },
+        onTap: _handleNavigation,
       ),
     );
   }

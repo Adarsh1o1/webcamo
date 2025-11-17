@@ -5,22 +5,18 @@ import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/views/splash_screen.dart';
 import 'package:flutter/services.dart';
 
-
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
   SystemChrome.setSystemUIOverlayStyle(
-  const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.transparent, // ← makes navbar transparent
-    systemNavigationBarDividerColor: Colors.transparent,
-    systemNavigationBarIconBrightness: Brightness.light, // or dark
-  ),
-);
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: MyColors.backgund,
+      systemNavigationBarDividerColor: MyColors.backgund,
+      statusBarColor: MyColors.backgund,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -33,33 +29,42 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return MaterialApp(
-          title: 'Webcamo',
-          debugShowCheckedModeBanner: false,
-
-          themeMode: ThemeMode.system,
-          theme: ThemeData(
-            colorScheme: MyColors.lightColorScheme,
-            useMaterial3: true,
-            appBarTheme: AppBarTheme(
-              backgroundColor: MyColors.lightColorScheme.surfaceVariant,
-              foregroundColor: MyColors.lightColorScheme.onSurface,
-              elevation: 0,
-            ),
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            systemNavigationBarColor: MyColors.backgund,
+            systemNavigationBarDividerColor: MyColors.backgund,
+            statusBarColor: MyColors.backgund,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarIconBrightness: Brightness.dark,
           ),
+          child: MaterialApp(
+            title: 'Webcamo',
+            debugShowCheckedModeBanner: false,
 
-          // 2. Dark Theme
-          darkTheme: ThemeData(
-            colorScheme: MyColors.darkColorScheme,
-            useMaterial3: true,
-            appBarTheme: AppBarTheme(
-              backgroundColor: MyColors.darkColorScheme.surfaceVariant,
-              foregroundColor: MyColors.darkColorScheme.onSurface,
-              elevation: 0,
+            themeMode: ThemeMode.system,
+            theme: ThemeData(
+              colorScheme: MyColors.lightColorScheme,
+              useMaterial3: true,
+              appBarTheme: AppBarTheme(
+                backgroundColor: MyColors.lightColorScheme.surfaceVariant,
+                foregroundColor: MyColors.lightColorScheme.onSurface,
+                elevation: 0,
+              ),
             ),
-          ),
 
-          home: SplashScreen(),
+            // 2. Dark Theme
+            darkTheme: ThemeData(
+              colorScheme: MyColors.darkColorScheme,
+              useMaterial3: true,
+              appBarTheme: AppBarTheme(
+                backgroundColor: MyColors.darkColorScheme.surfaceVariant,
+                foregroundColor: MyColors.darkColorScheme.onSurface,
+                elevation: 0,
+              ),
+            ),
+
+            home: SplashScreen(),
+          ),
         );
       },
     );

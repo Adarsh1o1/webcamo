@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -17,9 +18,9 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/gestures.dart';
+import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
-import 'package:webcamo/utils/strings.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 
 const String clientHtml = """
@@ -143,13 +144,14 @@ const String clientHtml = """
 </html>
 """;
 
-class HomePage extends StatefulWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
   @override
-  State<HomePage> createState() => _HomePageState();
+  ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   HttpServer? _httpServer;
   String? _serverUrl;
   bool _isConnected = false;
@@ -191,7 +193,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _fullCleanup();
+    // ✅ NEW: Ensure full cleanup when leaving the page
+    if (_serverUrl != null) {
+      _fullCleanup();
+    } else {
+      // At minimum, stop camera
+      _localStream?.getTracks().forEach((track) {
+        track.stop();
+      });
+      _localStream?.dispose();
+    }
+
     WidgetsBinding.instance.removeObserver(this);
     _localRenderer.dispose();
     _httpServer?.close(force: true);
@@ -270,12 +282,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         'audio': false,
         'video': {
           'deviceId': _selectedCamera!.deviceId,
-          // 'mandatory': {
-          //   'minWidth': '2160',
-          //   'minHeight': '2160',
-          'minFrameRate': '30',
-          'maxFrameRate': '30',
-          // },
+          'mandatory': {
+            'minWidth': '1080',
+            'minHeight': '1080',
+            'minFrameRate': '30',
+            'maxFrameRate': '30',
+          },
           // 'width': {'ideal': 720},
           // 'height': {'ideal': 720},
           // 'aspectRatio': 16 / 9,            // ✅ forces landscape view
@@ -564,6 +576,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _isServerStarting = false;
           _ipAddress = displayIp!;
         });
+        ref
+            .read(serverProvider.notifier)
+            .setServerRunning(true, serverUrl: _serverUrl);
       }
       // print('✅ Server running at http://0.0.0.0:$_port (displaying $_serverUrl)');
     } catch (e) {
@@ -640,6 +655,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     // Stop the server
     await _httpServer?.close(force: true);
     _httpServer = null;
+
+    ref.read(serverProvider.notifier).stopServer();
 
     if (mounted) {
       setState(() {
@@ -730,12 +747,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('How to Use Webcamo', style:TextStyle( fontSize: AppSizes.font_lg, fontWeight: FontWeight.bold,)),
+        title: Text(
+          'How to Use Webcamo',
+          style: TextStyle(
+            fontSize: AppSizes.font_lg,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: SizedBox(
           width: 60.w,
           height: 300.h,
           child: SingleChildScrollView(
-            
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -746,9 +768,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
                 const Text(
                   'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-                  style: TextStyle(
-                    color: MyColors.grey
-                  ),
+                  style: TextStyle(color: MyColors.grey),
                 ),
                 const Text(
                   '2. Connect on PC',
@@ -756,9 +776,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 ),
                 const Text(
                   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                                    style: TextStyle(
-                    color: MyColors.grey
-                  ),
+                  style: TextStyle(color: MyColors.grey),
                 ),
                 const Text(
                   'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
@@ -771,7 +789,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   '3. Voila! ',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-          
+
                 // --- THIS IS THE NEW PART ---
                 RichText(
                   text: TextSpan(
@@ -796,7 +814,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             // Open the link when tapped
-                            _launchURL('https://www.buymeacoffee.com/adarsh1o1');
+                            _launchURL(
+                              'https://www.buymeacoffee.com/adarsh1o1',
+                            );
                           },
                       ),
                     ],
@@ -808,15 +828,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
         actions: [
-
           GestureDetector(
             onTap: () => Navigator.of(context).pop(),
-            child:  Text('Got it!',
-            style: TextStyle(
-              fontSize: AppSizes.font_md,
-              fontWeight: FontWeight.bold,
-              color: MyColors.green
-            ),
+            child: Text(
+              'Got it!',
+              style: TextStyle(
+                fontSize: AppSizes.font_md,
+                fontWeight: FontWeight.bold,
+                color: MyColors.green,
+              ),
             ),
           ),
         ],
@@ -1000,7 +1020,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     SizedBox(height: 50.sp),
                     Center(
                       child: TextButton(
-                        onPressed: () {Navigator.push(context, MaterialPageRoute(builder: (context) => TroubleshootPage()));},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TroubleshootPage(),
+                            ),
+                          );
+                        },
                         child: Text("Troubleshoot"),
                       ),
                     ),
@@ -1048,10 +1075,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               if (_serverUrl != null) ...[
                 // --- Status Panel Card ---
                 Card(
-                  
                   elevation: 2,
                   shape: RoundedRectangleBorder(
-                    
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
@@ -1190,11 +1215,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 SizedBox(width: 10.w),
                                 Expanded(
                                   child: Text(
-                                  _serverUrl == null
-                                      ? 'Start Server'
-                                      : 'Stop Server',
+                                    _serverUrl == null
+                                        ? 'Start Server'
+                                        : 'Stop Server',
+                                  ),
                                 ),
-                                )
                               ],
                             ),
                           ),
