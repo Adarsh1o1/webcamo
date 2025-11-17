@@ -829,6 +829,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
       appBar: AppBar(
+        titleSpacing: 0,
         // Use a subtle background color that's slightly
         // different from the scaffold's background
         // ignore: deprecated_member_use
@@ -838,15 +839,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(AppStrings.appLogoWithoutBg, height: AppSizes.icon_md),
-            // SizedBox(width: 12.sp),
-            // Text(
-            //   'Webcamo',
-            //   style: TextStyle(
-            //     fontSize: AppSizes.font_lg,
-            //     fontWeight: FontWeight.bold,
-            //   ),
-            // ),
+            Image.asset(AppStrings.appLogoWithoutBg, height: AppSizes.icon_xl + 10.h),
+            Text(
+              'Webcamo',
+              style: TextStyle(
+                fontSize: AppSizes.font_lg,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             // RichText(
             //   text: TextSpan(
             //     children: [
@@ -976,40 +976,40 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    SizedBox(height: 50.sp),
-                    Text(
-                      'Instructions to use:',
-                      style: TextStyle(
-                        fontSize: AppSizes.font_md,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                        color: MyColors.grey,
-                        decorationColor: MyColors.grey,
-                      ),
-                    ),
-                    SizedBox(height: 10.sp),
-                    const BulletListItem(
-                      text:
-                          'Tap on Start Server to start the server.',
-                    ),
-                    const BulletListItem(
-                      text: 'Wait until the app shows the WiFi IP.',
-                    ),
-                    const BulletListItem(
-                      text:
-                          'Make sure your phone and PC are on the same Local Wi-Fi network only.',
-                    ),
-                    const BulletListItem(
-                      text: 'On your PC, open the Webcamo Desktop client. Click here to setup on pc',
-                    ),
-                    const BulletListItem(
-                      text:
-                          'Enter the WiFi IP displayed on your phone and click connect.',
-                    ),
-                    const BulletListItem(
-                      text:
-                          'Your phone camera will appear on screen. Webcamo will now act as a virtual webcam for any app (Zoom, OBS, Discord, Google, Meet, etc.)',
-                    ),
+                    // SizedBox(height: 50.sp),
+                    // Text(
+                    //   'Instructions to use:',
+                    //   style: TextStyle(
+                    //     fontSize: AppSizes.font_md,
+                    //     fontWeight: FontWeight.bold,
+                    //     decoration: TextDecoration.underline,
+                    //     color: MyColors.grey,
+                    //     decorationColor: MyColors.grey,
+                    //   ),
+                    // ),
+                    // SizedBox(height: 10.sp),
+                    // const BulletListItem(
+                    //   text:
+                    //       'Tap on Start Server to start the server.',
+                    // ),
+                    // const BulletListItem(
+                    //   text: 'Wait until the app shows the WiFi IP.',
+                    // ),
+                    // const BulletListItem(
+                    //   text:
+                    //       'Make sure your phone and PC are on the same Local Wi-Fi network only.',
+                    // ),
+                    // const BulletListItem(
+                    //   text: 'On your PC, open the Webcamo Desktop client. Click here to setup on pc',
+                    // ),
+                    // const BulletListItem(
+                    //   text:
+                    //       'Enter the WiFi IP displayed on your phone and click connect.',
+                    // ),
+                    // const BulletListItem(
+                    //   text:
+                    //       'Your phone camera will appear on screen. Webcamo will now act as a virtual webcam for any app (Zoom, OBS, Discord, Google, Meet, etc.)',
+                    // ),
                   ],
                 ),
 

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/strings.dart';
 import 'package:webcamo/views/home_page.dart';
 
 class OnboardingData {
-  final String imagePlaceholder;
-  final String text;
+  final String image;
+  final String title;
 
-  OnboardingData({required this.imagePlaceholder, required this.text});
+  const OnboardingData({required this.image, required this.title});
 }
 
 class OnboardingScreen extends StatefulWidget {
@@ -17,22 +19,23 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  late PageController _pageController;
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
+  late final PageController _pageController;
   int _currentPage = 0;
 
-  final List<OnboardingData> _pages = [
+  final List<OnboardingData> _pages = const [
     OnboardingData(
-      imagePlaceholder: 'page1_image',
-      text: 'Welcome! Discover amazing features.',
+      image: AppStrings.illustration01,
+      title: 'Welcome! Discover amazing features.',
     ),
     OnboardingData(
-      imagePlaceholder: 'page2_image',
-      text: 'Personalize your experience with ease.',
+      image: AppStrings.illustration01,
+      title: 'Personalize your experience with ease.',
     ),
     OnboardingData(
-      imagePlaceholder: 'page3_image',
-      text: 'Let\'s get started on your journey!',
+      image: AppStrings.illustration01,
+      title: 'Let\'s get started on your journey!',
     ),
   ];
 
@@ -48,197 +51,274 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _navigateToHome() {
+  void _goToHome() {
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (context) => HomePage()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: MyColors.lightColorScheme.primary,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSizes.p24),
-            child: Text(
-              '${_currentPage + 1}/${_pages.length}',
-              style: TextStyle(
-                fontSize: AppSizes.font_lg,
-                fontWeight: FontWeight.bold,
-                color: MyColors.white,
-              ),
-            ),
-          ),
-        ],
+    // Apply custom page transitions globally for this screen
+    return Theme(
+      data: Theme.of(context).copyWith(
+        pageTransitionsTheme: PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
+        ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 7,
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _pages.length,
-                onPageChanged: (int page) {
-                  setState(() {
-                    _currentPage = page;
-                  });
-                },
-                itemBuilder: (context, index) {
-                  return OnboardingPageContent(
-                    data: _pages[index],
-                    isActive: index == _currentPage,
-                  );
-                },
-              ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSizes.p24,
-                  vertical: AppSizes.p16,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: _navigateToHome,
-                      child: const Text('Skip'),
+      child: Scaffold(
+        backgroundColor: MyColors.lightColorScheme.primary,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // ---- Header (page counter) ----
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSizes.p24,
+                    vertical: AppSizes.p16,
+                  ),
+                  child: Text(
+                    '${_currentPage + 1}/${_pages.length}',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: MyColors.white,
                     ),
-                    FilledButton(
-                      onPressed: () {
-                        if (_currentPage == _pages.length - 1) {
-                          _navigateToHome();
-                        } else {
-                          _pageController.nextPage(
-                            duration: const Duration(milliseconds: 400),
-                            curve: Curves.easeInOut,
-                          );
-                        }
-                      },
-                      child: Text(
-                        _currentPage == _pages.length - 1
-                            ? 'Get Started'
-                            : 'Next',
+                  ),
+                ),
+              ),
+
+              // ---- Page Content (70%) ----
+              Expanded(
+                flex: 7,
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (p) => setState(() => _currentPage = p),
+                  itemCount: _pages.length,
+                  itemBuilder: (_, index) {
+                    return OnboardingPage(
+                      data: _pages[index],
+                      // Pass animation progress for shared dot animation
+                      progress: _currentPage == index
+                          ? 1.0
+                          : (index > _currentPage ? 0.0 : 1.0),
+                    );
+                  },
+                ),
+              ),
+
+              // ---- Dots + Buttons (30%) ----
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSizes.p24),
+                  child: Column(
+                    children: [
+                      // Dots
+                      AnimatedDotsIndicator(
+                        currentPage: _currentPage,
+                        itemCount: _pages.length,
                       ),
-                    ),
-                  ],
+                      const Spacer(),
+
+                      // Buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: _goToHome,
+                            child: Text(
+                              'Skip',
+                              style: TextStyle(
+                                color: MyColors.white,
+                                fontSize: 16.sp,
+                              ),
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: MyColors.green,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30.r),
+                              ),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 32.w,
+                                vertical: 14.h,
+                              ),
+                            ),
+                            onPressed: () {
+                              if (_currentPage == _pages.length - 1) {
+                                _goToHome();
+                              } else {
+                                _pageController.nextPage(
+                                  duration: const Duration(milliseconds: 400),
+                                  curve: Curves.easeInOut,
+                                );
+                              }
+                            },
+                            child: Text(
+                              _currentPage == _pages.length - 1
+                                  ? 'Get Started'
+                                  : 'Next',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: AppSizes.p16),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class OnboardingPageContent extends StatefulWidget {
+// ---------------------------------------------------------------
+// Individual Onboarding Page (with scale + fade)
+// ---------------------------------------------------------------
+class OnboardingPage extends StatefulWidget {
   final OnboardingData data;
-  final bool isActive;
+  final double progress; // 0.0 → 1.0 (used only for entry animation)
 
-  const OnboardingPageContent({
-    super.key,
-    required this.data,
-    required this.isActive,
-  });
+  const OnboardingPage({super.key, required this.data, required this.progress});
 
   @override
-  State<OnboardingPageContent> createState() => _OnboardingPageContentState();
+  State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
-class _OnboardingPageContentState extends State<OnboardingPageContent>
+class _OnboardingPageState extends State<OnboardingPage>
     with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    _scale = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.0, 0.7, curve: Curves.easeOutBack),
+      ),
+    );
+    _fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _ctrl,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
+      ),
     );
 
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, -0.3), end: Offset.zero).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Curves.easeInOut,
-          ),
-        );
-
-    if (widget.isActive) {
-      _animationController.forward();
-    }
+    // Trigger when page becomes active
+    if (widget.progress == 1.0) _ctrl.forward();
   }
 
   @override
-  void didUpdateWidget(covariant OnboardingPageContent oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.isActive && !oldWidget.isActive) {
-      _animationController.forward(from: 0.0);
+  void didUpdateWidget(covariant OnboardingPage old) {
+    super.didUpdateWidget(old);
+    if (widget.progress == 1.0 && old.progress != 1.0) {
+      _ctrl.forward(from: 0);
     }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Padding(
-            padding: const EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const FlutterLogo(size: 250),
-                const SizedBox(height: 48),
-                Text(
-                  widget.data.text,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) {
+        return Opacity(
+          opacity: _fade.value,
+          child: Transform.scale(
+            scale: _scale.value,
+            child: Padding(
+              padding: EdgeInsets.all(AppSizes.p32),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    widget.data.image,
+                    height: AppSizes.image_md,
+                    fit: BoxFit.contain,
                   ),
-                ),
-              ],
+                  SizedBox(height: 48.sp),
+                  Text(
+                    widget.data.title,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: MyColors.white,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+// ---------------------------------------------------------------
+// Animated Dots Indicator
+// ---------------------------------------------------------------
+class AnimatedDotsIndicator extends StatelessWidget {
+  final int currentPage;
+  final int itemCount;
+  final double dotSize = 8.0;
+  final double spacing = 10.0;
+  final Color activeColor = MyColors.green;
+  final Color inactiveColor = MyColors.white.withOpacity(0.4);
+
+  AnimatedDotsIndicator({
+    super.key,
+    required this.currentPage,
+    required this.itemCount,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home Screen')),
-      body: const Center(
-        child: Text('Welcome to the App!', style: TextStyle(fontSize: 24)),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(itemCount, (index) {
+        final bool isActive = index == currentPage;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          width: isActive ? dotSize * 2.5 : dotSize,
+          height: dotSize,
+          margin: EdgeInsets.symmetric(horizontal: spacing / 2),
+          decoration: BoxDecoration(
+            color: isActive ? activeColor : inactiveColor,
+            borderRadius: BorderRadius.circular(dotSize),
+          ),
+        );
+      }),
     );
   }
 }
