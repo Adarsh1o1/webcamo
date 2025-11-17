@@ -3,9 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/views/splash_screen.dart';
+import 'package:flutter/services.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  SystemChrome.setSystemUIOverlayStyle(
+  const SystemUiOverlayStyle(
+    systemNavigationBarColor: Colors.transparent, // ← makes navbar transparent
+    systemNavigationBarDividerColor: Colors.transparent,
+    systemNavigationBarIconBrightness: Brightness.light, // or dark
+  ),
+);
   runApp(
     const ProviderScope(
       child: MyApp(),

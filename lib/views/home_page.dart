@@ -20,7 +20,7 @@ import 'package:flutter/gestures.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/strings.dart';
-import 'package:webcamo/views/troubleshoot_page.dart';
+import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 
 const String clientHtml = """
 <!DOCTYPE html>
@@ -846,72 +846,72 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
-      appBar: AppBar(
-        titleSpacing: 0,
-        // Use a subtle background color that's slightly
-        // different from the scaffold's background
-        // ignore: deprecated_member_use
-        backgroundColor: colors.surfaceVariant.withOpacity(0.5),
-        elevation: 1, // Add a very subtle shadow
-        // 1. A nice title with an icon
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Image.asset(
-              AppStrings.appLogoWithoutBg,
-              height: AppSizes.icon_xl + 10.h,
-            ),
-            Text(
-              'Webcamo',
-              style: TextStyle(
-                fontSize: AppSizes.font_lg,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            // RichText(
-            //   text: TextSpan(
-            //     children: [
-            //       TextSpan(
-            //         text: 'Web',
-            //         style: TextStyle(
-            //           fontSize: AppSizes.font_lg,
-            //           fontWeight: FontWeight.bold,
-            //         ),
-            //       ),
-            //       TextSpan(
-            //         text: 'camo',
-            //         style: TextStyle(
-            //           fontSize: AppSizes.font_lg,
-            //           fontWeight: FontWeight.bold,
-            //           color: MyColors.camo,
-            //         ),
-            //       ),
-            //     ],
-            //   ),
-            // ),
-          ],
-        ),
-        // title: Text(
-        //   'Webcamo',
-        //   style: TextStyle(
-        //     fontSize: AppSizes.font_lg,
-        //     fontWeight: FontWeight.bold,
-        //   ),
-        // ),
+      // appBar: AppBar(
+      //   titleSpacing: 0,
+      //   // Use a subtle background color that's slightly
+      //   // different from the scaffold's background
+      //   // ignore: deprecated_member_use
+      //   backgroundColor: colors.surfaceVariant.withOpacity(0.5),
+      //   elevation: 1, // Add a very subtle shadow
+      //   // 1. A nice title with an icon
+      //   title: Row(
+      //     crossAxisAlignment: CrossAxisAlignment.center,
+      //     children: [
+      //       Image.asset(
+      //         AppStrings.appLogoWithoutBg,
+      //         height: AppSizes.icon_xl + 10.h,
+      //       ),
+      //       Text(
+      //         'Webcamo',
+      //         style: TextStyle(
+      //           fontSize: AppSizes.font_lg,
+      //           fontWeight: FontWeight.bold,
+      //         ),
+      //       ),
+      //       // RichText(
+      //       //   text: TextSpan(
+      //       //     children: [
+      //       //       TextSpan(
+      //       //         text: 'Web',
+      //       //         style: TextStyle(
+      //       //           fontSize: AppSizes.font_lg,
+      //       //           fontWeight: FontWeight.bold,
+      //       //         ),
+      //       //       ),
+      //       //       TextSpan(
+      //       //         text: 'camo',
+      //       //         style: TextStyle(
+      //       //           fontSize: AppSizes.font_lg,
+      //       //           fontWeight: FontWeight.bold,
+      //       //           color: MyColors.camo,
+      //       //         ),
+      //       //       ),
+      //       //     ],
+      //       //   ),
+      //       // ),
+      //     ],
+      //   ),
+      //   // title: Text(
+      //   //   'Webcamo',
+      //   //   style: TextStyle(
+      //   //     fontSize: AppSizes.font_lg,
+      //   //     fontWeight: FontWeight.bold,
+      //   //   ),
+      //   // ),
 
-        // 2. An "action" button on the right
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            tooltip: 'Help & Instructions', // Good for accessibility
-            onPressed: () {
-              // Call the help dialog we just added
-              _showHelpDialog(context);
-            },
-          ),
-          const SizedBox(width: 8), // A bit of padding
-        ],
-      ),
+      //   // 2. An "action" button on the right
+      //   actions: [
+      //     IconButton(
+      //       icon: const Icon(Icons.help_outline_rounded),
+      //       tooltip: 'Help & Instructions', // Good for accessibility
+      //       onPressed: () {
+      //         // Call the help dialog we just added
+      //         _showHelpDialog(context);
+      //       },
+      //     ),
+      //     const SizedBox(width: 8), // A bit of padding
+      //   ],
+      // ),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(AppSizes.p16),
@@ -1048,8 +1048,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               if (_serverUrl != null) ...[
                 // --- Status Panel Card ---
                 Card(
+                  
                   elevation: 2,
                   shape: RoundedRectangleBorder(
+                    
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
@@ -1186,11 +1188,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                       : Icons.power_off,
                                 ),
                                 SizedBox(width: 10.w),
-                                Text(
+                                Expanded(
+                                  child: Text(
                                   _serverUrl == null
                                       ? 'Start Server'
                                       : 'Stop Server',
                                 ),
+                                )
                               ],
                             ),
                           ),
@@ -1198,7 +1202,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           style: ElevatedButton.styleFrom(
                             // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                             textStyle: const TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w600,
                             ),
                             // minimumSize: Size(150,50),

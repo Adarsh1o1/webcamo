@@ -18,7 +18,7 @@ class BottomBarController extends StatelessWidget {
       height: 75.h,
       decoration: BoxDecoration(
         // Give it a color, or gradient, etc.
-        color: MyColors.lightColorScheme.primary,
+        color: MyColors.backgund,
         // Add a shadow to make it look like a bar
         boxShadow: [
           BoxShadow(
@@ -101,7 +101,7 @@ class BottomBarController extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12.sp,
                 // Use the active or inactive color for the text
-                color: isActive ? activeColor : inactiveColor,
+                color:  inactiveColor,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
               ),
             ),
