@@ -20,6 +20,9 @@ dependencies:
   shelf_web_socket: ^3.0.0
   web_socket_channel: ^3.0.3
   url_launcher: ^6.3.0
+  shared_preferences: ^2.5.3
+  flutter_screenutil: ^5.9.3
+  flutter_riverpod: ^3.0.3
   
 
 dev_dependencies:
@@ -36,12 +39,17 @@ flutter_launcher_icons:
   ios: true
 
   # This is the path to your master icon file
-  image_path: "android/assets/icon/icon.png" 
+  image_path: "assets/logos/webcamo-without-bg.png" 
 
   # This creates a special version for Android 12+ (adaptive icons)
-  adaptive_icon_background: "#121212" # (Optional) A background color for Android
+  adaptive_icon_background: "assets/logos/icon-bg.png" # (Optional) A background color for Android
+  adaptive_icon_foreground: "assets/logos/webcamo-without-bg.png" # (Optional) A background color for Android
+
 
 flutter:
   uses-material-design: true
 
+  assets:
+      - assets/logos/
+      - assets/images/
 # Add this entire block at the end of the file
