@@ -20,6 +20,7 @@ import 'package:flutter/gestures.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/strings.dart';
+import 'package:webcamo/views/troubleshoot_page.dart';
 
 const String clientHtml = """
 <!DOCTYPE html>
@@ -272,8 +273,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           // 'mandatory': {
           //   'minWidth': '2160',
           //   'minHeight': '2160',
-            'minFrameRate': '30',
-            'maxFrameRate': '30',
+          'minFrameRate': '30',
+          'maxFrameRate': '30',
           // },
           // 'width': {'ideal': 720},
           // 'height': {'ideal': 720},
@@ -390,7 +391,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
     }
   }
-
 
   Future<void> _pauseStream() async {
     print('is flash on $_isFlashOn');
@@ -730,76 +730,94 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('How to Use Webcamo'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '1. Start the Server',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const Text(
-                'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-              ),
-              const Text(
-                '2. Connect on PC',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const Text(
-                'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-              ),
-              const Text(
-                'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              // const Text(
-              //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-              // ),
-              const Text(
-                '3. Voila! ',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-
-              // --- THIS IS THE NEW PART ---
-              RichText(
-                text: TextSpan(
-                  // Use the default text style from the dialog
-                  style: Theme.of(context).dialogTheme.contentTextStyle,
-                  children: [
-                    TextSpan(
-                      text:
-                          'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
-                      style: TextStyle(
-                        color: colors
-                            .onSurface, // This will be black in light mode and white in dark mode
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'Buying me a Coffee.',
-                      style: TextStyle(
-                        color: colors.primary, // Make it look like a link
-                        decoration: TextDecoration.underline,
-                      ),
-                      // This makes the text tappable
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          // Open the link when tapped
-                          _launchURL('https://www.buymeacoffee.com/adarsh1o1');
-                        },
-                    ),
-                  ],
+        title: Text('How to Use Webcamo', style:TextStyle( fontSize: AppSizes.font_lg, fontWeight: FontWeight.bold,)),
+        content: SizedBox(
+          width: 60.w,
+          height: 300.h,
+          child: SingleChildScrollView(
+            
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  '1. Start the Server',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-              // --- END OF NEW PART ---
-            ],
+                const Text(
+                  'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
+                  style: TextStyle(
+                    color: MyColors.grey
+                  ),
+                ),
+                const Text(
+                  '2. Connect on PC',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Text(
+                  'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+                                    style: TextStyle(
+                    color: MyColors.grey
+                  ),
+                ),
+                const Text(
+                  'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                // const Text(
+                //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+                // ),
+                const Text(
+                  '3. Voila! ',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+          
+                // --- THIS IS THE NEW PART ---
+                RichText(
+                  text: TextSpan(
+                    // Use the default text style from the dialog
+                    style: Theme.of(context).dialogTheme.contentTextStyle,
+                    children: [
+                      TextSpan(
+                        text:
+                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+                        style: TextStyle(
+                          color: colors
+                              .onSurface, // This will be black in light mode and white in dark mode
+                        ),
+                      ),
+                      TextSpan(
+                        text: 'Buying me a Coffee.',
+                        style: TextStyle(
+                          color: colors.primary, // Make it look like a link
+                          decoration: TextDecoration.underline,
+                        ),
+                        // This makes the text tappable
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () {
+                            // Open the link when tapped
+                            _launchURL('https://www.buymeacoffee.com/adarsh1o1');
+                          },
+                      ),
+                    ],
+                  ),
+                ),
+                // --- END OF NEW PART ---
+              ],
+            ),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it!'),
+
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child:  Text('Got it!',
+            style: TextStyle(
+              fontSize: AppSizes.font_md,
+              fontWeight: FontWeight.bold,
+              color: MyColors.green
+            ),
+            ),
           ),
         ],
       ),
@@ -839,7 +857,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Image.asset(AppStrings.appLogoWithoutBg, height: AppSizes.icon_xl + 10.h),
+            Image.asset(
+              AppStrings.appLogoWithoutBg,
+              height: AppSizes.icon_xl + 10.h,
+            ),
             Text(
               'Webcamo',
               style: TextStyle(
@@ -976,7 +997,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                    // SizedBox(height: 50.sp),
+                    SizedBox(height: 50.sp),
+                    Center(
+                      child: TextButton(
+                        onPressed: () {Navigator.push(context, MaterialPageRoute(builder: (context) => TroubleshootPage()));},
+                        child: Text("Troubleshoot"),
+                      ),
+                    ),
+                    SizedBox(height: 50.sp),
+
                     // Text(
                     //   'Instructions to use:',
                     //   style: TextStyle(
