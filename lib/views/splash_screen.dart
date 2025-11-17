@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/strings.dart';
-import 'package:webcamo/views/home_page.dart';
+import 'package:webcamo/views/bottombar/bottom_bar.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => HomePage()),
+      MaterialPageRoute(builder: (_) => BottomBar()),
     );
   }
 
