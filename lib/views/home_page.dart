@@ -224,7 +224,7 @@ class _HomePageState extends ConsumerState<HomePage>
     //     state == AppLifecycleState.detached) {
     //   _stopStream(); // or _fullCleanup() if you want to stop server too
     // } else 
-    if (state == AppLifecycleState.resumed && _isPaused) {
+    if (state == AppLifecycleState.resumed && !_isPaused) {
       print('app paused and restarted camera');
       // ✅ Recreate camera pipeline on resume
       await _restartCameraPreview();
@@ -644,7 +644,7 @@ class _HomePageState extends ConsumerState<HomePage>
   // --- NEW: This function stops EVERYTHING (server, stream, camera) ---
   Future<void> _fullCleanup() async {
     await _stopStream(); // Stop the P2P connection
-    await _pauseStream();
+    // await _pauseStream();
 
     // Stop the local camera stream
     _localStream?.getTracks().forEach((track) {
