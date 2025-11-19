@@ -189,6 +189,7 @@ class _HomePageState extends ConsumerState<HomePage>
     _checkPermissions();
     // NOW safe to start camera
     _localRenderer.initialize();
+    _isPaused = true;
   }
 
   @override
@@ -223,8 +224,8 @@ class _HomePageState extends ConsumerState<HomePage>
     // if (state == AppLifecycleState.paused ||
     //     state == AppLifecycleState.detached) {
     //   _stopStream(); // or _fullCleanup() if you want to stop server too
-    // } else 
-    if (state == AppLifecycleState.resumed && _isPaused) {
+    // } else
+    if (state == AppLifecycleState.resumed && !_isPaused) {
       print('app paused and restarted camera');
       // ✅ Recreate camera pipeline on resume
       await _restartCameraPreview();
@@ -501,6 +502,7 @@ class _HomePageState extends ConsumerState<HomePage>
     // _shouldReconnect = true;
     if (mounted) {
       setState(() {
+        _isPaused = false;
         _isServerStarting = true;
       });
     }
@@ -644,7 +646,7 @@ class _HomePageState extends ConsumerState<HomePage>
   // --- NEW: This function stops EVERYTHING (server, stream, camera) ---
   Future<void> _fullCleanup() async {
     await _stopStream(); // Stop the P2P connection
-    await _pauseStream();
+    // await _pauseStream();
 
     // Stop the local camera stream
     _localStream?.getTracks().forEach((track) {
@@ -666,7 +668,7 @@ class _HomePageState extends ConsumerState<HomePage>
         _serverUrl = null;
         _isConnected = false;
         _isFlashOn = false;
-        _isPaused = false;
+        _isPaused = true;
       });
     }
   }
@@ -851,538 +853,585 @@ class _HomePageState extends ConsumerState<HomePage>
     final bool isFrontCamera =
         _selectedCamera?.label.toLowerCase().contains('front') ?? false;
 
-    // --- Define our Color Palette & Text Styles ---
     final ColorScheme colors = Theme.of(context).colorScheme;
-    final TextTheme text = Theme.of(context).textTheme;
 
     final Color successColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.greenAccent[400]! // Bright green for dark mode
-        : Colors.green.shade800; // Dark green for light mode
+        ? Colors.greenAccent[400]!
+        : Colors.green.shade600;
 
     final Color errorColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.redAccent[200]! // Bright "warning" for dark mode
-        : Colors.orange.shade800; // Dark "warning" for light mode
-    // --- END DYNAMIC COLORS ---
-    // ignore: deprecated_member_use
-    final Color surfaceColor = colors.surfaceContainerHighest.withOpacity(0.7);
+        ? Colors.orangeAccent[200]!
+        : Colors.orange.shade800;
 
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
-      // appBar: AppBar(
-      //   titleSpacing: 0,
-      //   // Use a subtle background color that's slightly
-      //   // different from the scaffold's background
-      //   // ignore: deprecated_member_use
-      //   backgroundColor: colors.surfaceVariant.withOpacity(0.5),
-      //   elevation: 1, // Add a very subtle shadow
-      //   // 1. A nice title with an icon
-      //   title: Row(
-      //     crossAxisAlignment: CrossAxisAlignment.center,
-      //     children: [
-      //       Image.asset(
-      //         AppStrings.appLogoWithoutBg,
-      //         height: AppSizes.icon_xl + 10.h,
-      //       ),
-      //       Text(
-      //         'Webcamo',
-      //         style: TextStyle(
-      //           fontSize: AppSizes.font_lg,
-      //           fontWeight: FontWeight.bold,
-      //         ),
-      //       ),
-      //       // RichText(
-      //       //   text: TextSpan(
-      //       //     children: [
-      //       //       TextSpan(
-      //       //         text: 'Web',
-      //       //         style: TextStyle(
-      //       //           fontSize: AppSizes.font_lg,
-      //       //           fontWeight: FontWeight.bold,
-      //       //         ),
-      //       //       ),
-      //       //       TextSpan(
-      //       //         text: 'camo',
-      //       //         style: TextStyle(
-      //       //           fontSize: AppSizes.font_lg,
-      //       //           fontWeight: FontWeight.bold,
-      //       //           color: MyColors.camo,
-      //       //         ),
-      //       //       ),
-      //       //     ],
-      //       //   ),
-      //       // ),
-      //     ],
-      //   ),
-      //   // title: Text(
-      //   //   'Webcamo',
-      //   //   style: TextStyle(
-      //   //     fontSize: AppSizes.font_lg,
-      //   //     fontWeight: FontWeight.bold,
-      //   //   ),
-      //   // ),
-
-      //   // 2. An "action" button on the right
-      //   actions: [
-      //     IconButton(
-      //       icon: const Icon(Icons.help_outline_rounded),
-      //       tooltip: 'Help & Instructions', // Good for accessibility
-      //       onPressed: () {
-      //         // Call the help dialog we just added
-      //         _showHelpDialog(context);
-      //       },
-      //     ),
-      //     const SizedBox(width: 8), // A bit of padding
-      //   ],
-      // ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(AppSizes.p16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // --- Logic for Permissions and Loading ---
-              if (_sharedPreferences?.getBool('hasPermissions') == false)
-                GestureDetector(
-                  onTap: () => _requestPermission(),
-                  child: Card(
-                    color: colors.errorContainer,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Permissions not granted, click here to allow.',
-                        style: TextStyle(
-                          fontSize: AppSizes.font_sm,
-                          color: MyColors.lightColorScheme.primary,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // --- IMPROVED PERMISSIONS CARD ---
+            if (_sharedPreferences?.getBool('hasPermissions') == false)
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSizes.p16,
+                  vertical: 8.h,
                 ),
-              if (_isServerStarting)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else if (_serverUrl == null)
-                // Center(
-                //   child: ElevatedButton.icon(
-                //     onPressed: _startServer,
-                //     icon: const Icon(Icons.power_settings_new),
-                //     label: const Text('Start Server'),
-                //     style: ElevatedButton.styleFrom(
-                //       padding: const EdgeInsets.symmetric(vertical: 14),
-                //       backgroundColor: Colors.green,
-                //       foregroundColor: Colors.white,
-                //     ),
-                //   ),
-                // ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Icon(
-                        Icons.android_rounded,
-                        size: AppSizes.image_md,
-                        color: MyColors.lightColorScheme.onSurfaceVariant
-                            .withOpacity(0.4),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _requestPermission(),
+                    borderRadius: BorderRadius.circular(12.r),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: colors.errorContainer.withOpacity(0.1),
+                        border: Border.all(
+                          color: colors.error.withOpacity(0.5),
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
-                    ),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: _serverUrl == null
-                            ? _startServer
-                            : _fullCleanup,
-                        icon: Icon(
-                          _serverUrl == null
-                              ? Icons.power_settings_new
-                              : Icons.power_off,
-                        ),
-                        label: Text(
-                          _serverUrl == null ? 'Start Server' : 'Stop Server',
-                        ),
-
-                        style: ElevatedButton.styleFrom(
-                          // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                          textStyle: TextStyle(
-                            fontSize: AppSizes.font_sm,
-                            fontWeight: FontWeight.w600,
+                      padding: EdgeInsets.all(16.sp),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: colors.error,
                           ),
-                          // minimumSize: Size(150,50),
-                          backgroundColor: _serverUrl == null
-                              ? MyColors.green
-                              : Colors.red.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 50.sp),
-                    Center(
-                      child: TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TroubleshootPage(),
-                            ),
-                          );
-                        },
-                        child: Text("Troubleshoot"),
-                      ),
-                    ),
-                    SizedBox(height: 50.sp),
-
-                    // Text(
-                    //   'Instructions to use:',
-                    //   style: TextStyle(
-                    //     fontSize: AppSizes.font_md,
-                    //     fontWeight: FontWeight.bold,
-                    //     decoration: TextDecoration.underline,
-                    //     color: MyColors.grey,
-                    //     decorationColor: MyColors.grey,
-                    //   ),
-                    // ),
-                    // SizedBox(height: 10.sp),
-                    // const BulletListItem(
-                    //   text:
-                    //       'Tap on Start Server to start the server.',
-                    // ),
-                    // const BulletListItem(
-                    //   text: 'Wait until the app shows the WiFi IP.',
-                    // ),
-                    // const BulletListItem(
-                    //   text:
-                    //       'Make sure your phone and PC are on the same Local Wi-Fi network only.',
-                    // ),
-                    // const BulletListItem(
-                    //   text: 'On your PC, open the Webcamo Desktop client. Click here to setup on pc',
-                    // ),
-                    // const BulletListItem(
-                    //   text:
-                    //       'Enter the WiFi IP displayed on your phone and click connect.',
-                    // ),
-                    // const BulletListItem(
-                    //   text:
-                    //       'Your phone camera will appear on screen. Webcamo will now act as a virtual webcam for any app (Zoom, OBS, Discord, Google, Meet, etc.)',
-                    // ),
-                  ],
-                ),
-
-              // --- FIX 4: Correct UI Layout ---
-              // All buttons are now correctly nested inside the
-              // `if (_serverUrl != null)` block and their respective cards.
-              if (_serverUrl != null) ...[
-                // --- Status Panel Card ---
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'WiFi IP: ',
-                                style: TextStyle(
-                                  fontSize: AppSizes.font_sm,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                              ),
-                              TextSpan(
-                                text: _ipAddress,
-                                style: TextStyle(
-                                  fontSize: AppSizes.font_sm,
-                                  color: MyColors.white.withOpacity(0.8),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 10.sp),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Browser: ',
-                                style: TextStyle(
-                                  fontSize: AppSizes.font_sm,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                              ),
-                              TextSpan(
-                                text: _serverUrl,
-                                style: TextStyle(
-                                  fontSize: AppSizes.font_sm,
-                                  color: MyColors.white.withOpacity(0.8),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // const SizedBox(height: 8),
-                        // SelectableText(
-                        //   _ipAddress,
-                        //   style: TextStyle(
-                        //     fontSize: AppSizes.font_xl,
-                        //     decoration: TextDecoration.underline,
-                        //     decorationColor: MyColors.lightColorScheme.onSurfaceVariant
-                        //   ),
-                        // ),
-                        SizedBox(height: 10.sp),
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Status: ',
-                                style: TextStyle(
-                                  fontSize: AppSizes.font_sm,
-                                  fontWeight: FontWeight.bold,
-                                  color: colors.onSurfaceVariant,
-                                ),
-                              ),
-                              TextSpan(
-                                text: _isConnected
-                                    ? 'DEVICE CONNECTED'
-                                    : 'AWAITING CONNECTION',
-                                style: text.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: AppSizes.font_sm,
-                                  color: _isConnected
-                                      ? successColor
-                                      : errorColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // const SizedBox(height: 8),
-                        // Row(
-                        //   mainAxisAlignment: MainAxisAlignment.start,
-                        //   crossAxisAlignment: CrossAxisAlignment.start,
-                        //   children: [
-                        //     Icon(
-                        //       _isConnected
-                        //           ? Icons.check_circle_rounded
-                        //           : Icons.warning_amber_rounded,
-                        //       color: _isConnected ? successColor : errorColor,
-                        //       size: 24,
-                        //     ),
-                        //     const SizedBox(width: 12),
-                        //     Expanded(
-                        //       child: Text(
-                        //         _isConnected
-                        //             ? 'DEVICE CONNECTED'
-                        //             : 'AWAITING CONNECTION',
-                        //         style: text.titleLarge?.copyWith(
-                        //           fontWeight: FontWeight.bold,
-                        //           fontSize: 20,
-                        //           color: _isConnected
-                        //               ? successColor
-                        //               : errorColor,
-                        //         ),
-                        //         softWrap: true,
-                        //       ),
-                        //     ),
-                        //   ],
-                        // ),
-                        SizedBox(height: 20.sp),
-                        ElevatedButton.icon(
-                          onPressed: _serverUrl == null
-                              ? _startServer
-                              : _fullCleanup,
-                          label: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 70.sp,
-                              vertical: 4,
-                            ),
-                            child: Row(
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  _serverUrl == null
-                                      ? Icons.power_settings_new
-                                      : Icons.power_off,
+                                Text(
+                                  'Permissions Required',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: colors.error,
+                                    fontSize: 14.sp,
+                                  ),
                                 ),
-                                SizedBox(width: 10.w),
-                                Expanded(
-                                  child: Text(
-                                    _serverUrl == null
-                                        ? 'Start Server'
-                                        : 'Stop Server',
+                                Text(
+                                  'Tap to grant Camera & Mic access',
+                                  style: TextStyle(
+                                    color: colors.onSurfaceVariant,
+                                    fontSize: 12.sp,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-
-                          style: ElevatedButton.styleFrom(
-                            // padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                            textStyle: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            // minimumSize: Size(150,50),
-                            backgroundColor: _serverUrl == null
-                                ? MyColors.green
-                                : MyColors.red,
-                            foregroundColor: Colors.white,
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14.sp,
+                            color: colors.error,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+              ),
 
-                // --- Controls Panel Card ---
-                Card(
-                  elevation: 0,
-                  color: surfaceColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            if (_isServerStarting)
+              SizedBox(
+                height: 600.h,
+                child: const Center(child: CircularProgressIndicator()),
+              )
+            else if (_serverUrl == null)
+              // --- STATE 1: SERVER STOPPED ---
+              Stack(
+                children: [
+                  Positioned(
+                    top: -100,
+                    left: -100,
+                    right: -100,
+                    child: Container(
+                      height: 500.h,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            MyColors.grey.withOpacity(0.2),
+                            Colors.transparent,
+                          ],
+                          radius: 0.8.r,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                  SingleChildScrollView(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        SizedBox(height: 60.h),
+              
+                        // Animation
+                        const _RippleUSBIcon(),
+              
+                        SizedBox(height: 20.h),
+              
+                        // --- NEW: Heading Text ---
                         Text(
-                          'CAMERA PREVIEW',
-                          style: text.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
+                          "Wireless Webcam",
+                          style: TextStyle(
+                            fontSize: 24.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Colors
+                                .white, // Assuming dark background based on your code
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // --- NEW: Local Preview Window ---
-                        if (_isInitialized)
-                          // 1. Wrap the container in an AspectRatio widget
-                          AspectRatio(
-                            aspectRatio: 1,
-                            child: Container(
-                              // 3. Remove the fixed height
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.black,
-                                border: Border.all(color: Colors.grey.shade700),
-                                borderRadius: BorderRadius.circular(12),
+                        SizedBox(height: 8.h),
+                        Text(
+                          "Turn your phone into a high-quality\nPC webcam in seconds.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: Colors.white70,
+                            height: 1.5,
+                          ),
+                        ),
+              
+                        SizedBox(height: 30.h),
+              
+                        // Start Button
+                        Center(
+                          child: SizedBox(
+                            width: 200.w,
+                            height: 50.h,
+                            child: ElevatedButton.icon(
+                              onPressed: _serverUrl == null
+                                  ? _startServer
+                                  : _fullCleanup,
+                              icon: Icon(
+                                _serverUrl == null
+                                    ? Icons.power_settings_new
+                                    : Icons.power_off,
                               ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(11),
-                                child: RTCVideoView(
-                                  _localRenderer,
-                                  // 4. Set objectFit back to Cover
-                                  objectFit: RTCVideoViewObjectFit
-                                      .RTCVideoViewObjectFitCover,
-                                  mirror: isFrontCamera,
+                              label: Text(
+                                _serverUrl == null
+                                    ? 'Start Server'
+                                    : 'Stop Server',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                textStyle: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                backgroundColor: _serverUrl == null
+                                    ? MyColors.green
+                                    : Colors.red.shade700,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shadowColor: _serverUrl == null
+                                    ? MyColors.green.withOpacity(0.5)
+                                    : Colors.red.withOpacity(0.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(30.r),
                                 ),
                               ),
                             ),
                           ),
-                        if (_isInitialized)
-                          const SizedBox(height: 20), // Spacing after preview
-
-                        Text(
-                          'CONTROLS',
-                          style: text.labelMedium?.copyWith(
-                            color: colors.onSurfaceVariant,
+                        ),
+              
+                        SizedBox(height: 30.h),
+              
+                        // --- NEW: Instruction Points ---
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 40.w),
+                          child: Align(
+                            alignment:Alignment.center,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                _InstructionRow(
+                                  text: "Connect Mobile & PC to same Wi-Fi",
+                                ),
+                                SizedBox(height: 12.h),
+                                _InstructionRow(
+                                  text: "Start Server above & note the IP",
+                                ),
+                                SizedBox(height: 12.h),
+                                _InstructionRow(
+                                  text: "Enter IP in the PC Client app",
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        // Switch Camera Button
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+              
+                        SizedBox(height: 30.h),
+              
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const TroubleshootPage(),
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white54,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.help_outline, size: 16.sp),
+                              SizedBox(width: 8.w),
+                              const Text("Having trouble?"),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 50.sp),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else
+              // --- STATE 2: SERVER RUNNING (IMPROVED UI) ---
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSizes.p16,
+                  vertical: AppSizes.p24,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 1. Connection Info Card (Dashboard Style)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(20.sp),
+                        child: Column(
                           children: [
-                            GestureDetector(
-                              onTap: _cameras.length < 2 ? null : _switchCamera,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: MyColors.lightColorScheme.primary,
-                                  borderRadius: BorderRadius.circular(
-                                    AppSizes.radius_full,
-                                  ),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(AppSizes.p16),
-                                  child: Icon(Icons.switch_camera_outlined),
+                            // Status Badge
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 6.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isConnected
+                                    ? successColor.withOpacity(0.2)
+                                    : errorColor.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(30.r),
+                                border: Border.all(
+                                  color: _isConnected
+                                      ? successColor
+                                      : errorColor,
+                                  width: 1,
                                 ),
                               ),
-                            ),
-                            GestureDetector(
-                              onTap: _toggleFlash,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: _isFlashOn
-                                      ? Colors.yellow.shade800
-                                      : MyColors.lightColorScheme.primary,
-                                  borderRadius: BorderRadius.circular(
-                                    AppSizes.radius_full,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isConnected ? Icons.link : Icons.link_off,
+                                    size: 16.sp,
+                                    color: _isConnected
+                                        ? successColor
+                                        : errorColor,
                                   ),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(AppSizes.p16),
-                                  child: Icon(
-                                    _isFlashOn
-                                        ? Icons.flash_on
-                                        : Icons.flash_off,
-                                    color: MyColors.white,
+                                  SizedBox(width: 8.w),
+                                  Text(
+                                    _isConnected
+                                        ? "CONNECTED"
+                                        : "WAITING FOR PC...",
+                                    style: TextStyle(
+                                      color: _isConnected
+                                          ? successColor
+                                          : errorColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.sp,
+                                      letterSpacing: 1.1,
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
                             ),
-                            GestureDetector(
-                              onTap: _pauseStream,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: _isPaused
-                                      ? MyColors.lightColorScheme.primary
-                                      : Colors.yellow.shade800,
-                                  borderRadius: BorderRadius.circular(
-                                    AppSizes.radius_full,
+
+                            SizedBox(height: 20.h),
+
+                            // The IP Address (Hero Text)
+                            Text(
+                              "WiFi IP Address",
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            SelectableText(
+                              _ipAddress,
+                              style: TextStyle(
+                                fontSize: 36.sp,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+
+                            SizedBox(height: 10.h),
+
+                            // Browser URL
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 8.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.language,
+                                    size: 16.sp,
+                                    color: Colors.white54,
                                   ),
-                                ),
-                                child: Padding(
-                                  padding: EdgeInsets.all(AppSizes.p16),
-                                  // child: _isPaused
-                                  //     ? Text('Start')
-                                  //     : Text('Stop'),
-                                  child: Icon(
-                                    _isPaused ? Icons.play_arrow : Icons.stop,
-                                    color: MyColors.white,
+                                  SizedBox(width: 8.w),
+                                  Flexible(
+                                    child: Text(
+                                      "Enter in PC Browser: $_serverUrl",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14.sp,
+                                        fontFamily: 'Courier',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            SizedBox(height: 24.h),
+
+                            // Stop Server Button (Danger Action)
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: _fullCleanup,
+                                icon: const Icon(Icons.power_off_rounded),
+                                label: const Text("Stop Server"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red.shade900
+                                      .withOpacity(0.8),
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
                                   ),
                                 ),
                               ),
                             ),
                           ],
                         ),
-                        if (_cameras.length < 2)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 12.0),
-                            child: Text(
-                              'Only one camera found.',
-                              textAlign: TextAlign.center,
-                              style: text.bodySmall?.copyWith(
-                                color: colors.onSurfaceVariant,
+                      ),
+                    ),
+
+                    SizedBox(height: 24.h),
+
+                    // 2. Camera Preview & Controls Section
+                    Text(
+                      "LIVE PREVIEW",
+                      style: TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    SizedBox(height: 10.h),
+
+                    // Camera Viewport
+                    Stack(
+                      children: [
+                        AspectRatio(
+                          aspectRatio: 1, // Square aspect for preview
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(24.r),
+                              border: Border.all(
+                                color: Colors.white12,
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(23.r),
+                              child: _isInitialized
+                                  ? RTCVideoView(
+                                      _localRenderer,
+                                      objectFit: RTCVideoViewObjectFit
+                                          .RTCVideoViewObjectFitCover,
+                                      mirror: isFrontCamera,
+                                    )
+                                  : const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                            ),
+                          ),
+                        ),
+
+                        // Pause Overlay
+                        if (_isPaused)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black54,
+                                borderRadius: BorderRadius.circular(24.r),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.pause_circle_filled,
+                                      size: 48.sp,
+                                      color: Colors.white70,
+                                    ),
+                                    SizedBox(height: 8.h),
+                                    Text(
+                                      "PREVIEW PAUSED",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16.sp,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
+
+                        // Camera Control Bar (Floating)
+                        Positioned(
+                          bottom: 16.h,
+                          left: 16.w,
+                          right: 16.w,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20.w,
+                              vertical: 12.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(30.r),
+                              border: Border.all(color: Colors.white10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Switch Camera
+                                _ControlIcon(
+                                  icon: Icons.cameraswitch_rounded,
+                                  onTap: _cameras.length < 2
+                                      ? null
+                                      : _switchCamera,
+                                  isActive:
+                                      false, // Always neutral unless specific logic
+                                ),
+
+                                // Flash Toggle
+                                _ControlIcon(
+                                  icon: _isFlashOn
+                                      ? Icons.flash_on_rounded
+                                      : Icons.flash_off_rounded,
+                                  onTap: _toggleFlash,
+                                  isActive: _isFlashOn,
+                                  activeColor: Colors.yellow,
+                                ),
+
+                                // Pause Toggle
+                                _ControlIcon(
+                                  icon: _isPaused
+                                      ? Icons.play_arrow_rounded
+                                      : Icons.stop_rounded,
+                                  onTap: _pauseStream,
+                                  isActive:
+                                      _isPaused, // Highlights when paused (technically "play" mode)
+                                  activeColor: MyColors.green,
+                                  isDestructive:
+                                      !_isPaused, // Red when it's a "Stop" button
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
+
+                    SizedBox(height: 24.h),
+                  ],
                 ),
-              ],
-            ],
-          ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- Custom Widget for Camera Controls ---
+class _ControlIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isActive;
+  final Color? activeColor;
+  final bool isDestructive;
+
+  const _ControlIcon({
+    required this.icon,
+    this.onTap,
+    this.isActive = false,
+    this.activeColor,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color iconColor = Colors.white;
+    Color bgColor = Colors.white10;
+
+    if (isActive && activeColor != null) {
+      iconColor = Colors.black;
+      bgColor = activeColor!;
+    } else if (isDestructive) {
+      iconColor = Colors.white;
+      bgColor = Colors.red.withOpacity(0.8);
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50.sp,
+        height: 50.sp,
+        decoration: BoxDecoration(
+          color: onTap == null ? Colors.white10 : bgColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: onTap == null ? Colors.white24 : iconColor,
+          size: 24.sp,
         ),
       ),
     );
@@ -1401,7 +1450,6 @@ class BulletListItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          // The bullet point
           Text(
             "• ",
             style: TextStyle(
@@ -1422,6 +1470,121 @@ class BulletListItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _RippleUSBIcon extends StatefulWidget {
+  const _RippleUSBIcon();
+
+  @override
+  State<_RippleUSBIcon> createState() => _RippleUSBIconState();
+}
+
+class _RippleUSBIconState extends State<_RippleUSBIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 200.w,
+      height: 200.w,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          _buildRipple(0),
+          _buildRipple(1),
+          _buildRipple(2),
+          Container(
+            width: 100.w,
+            height: 100.w,
+            decoration: BoxDecoration(
+              color: MyColors.lightColorScheme.primary,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: MyColors.lightColorScheme.primary.withOpacity(0.5),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Icon(Icons.wifi, size: 50.sp, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRipple(int index) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final double progress = (_controller.value + (index * 0.33)) % 1.0;
+        final double size = 100.w + (progress * 100.w);
+        final double opacity = (1.0 - progress).clamp(0.0, 1.0);
+
+        return Opacity(
+          opacity: opacity,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: MyColors.lightColorScheme.primary.withOpacity(0.5),
+                width: 2,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+
+class _InstructionRow extends StatelessWidget {
+  final String text;
+  const _InstructionRow({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white10,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.check, size: 12, color: MyColors.green),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: Colors.white60, fontSize: 13.sp),
+          ),
+        ),
+      ],
     );
   }
 }
