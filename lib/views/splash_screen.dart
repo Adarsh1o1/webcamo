@@ -95,7 +95,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final double logoSize = AppSizes.logo_md;
+    final double logoSize = AppSizes.logo_sm;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle(
@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
           children: [
             // ------------------- Logo -------------------
             Center(
-              child: Image.asset(AppStrings.appLogoWithoutBg, height: logoSize),
+              child: Image.asset(AppStrings.logo, height: logoSize),
             ),
 
             // ------------------- Ripple waves -------------------
@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen>
                       opacity1: 1 - _rippleAnim1.value,
                       radius2: logoSize / 2 * (1 + _rippleAnim2.value * 2),
                       opacity2: 1 - _rippleAnim2.value,
-                      color: MyColors.backgund,
+                      color: MyColors.green,
                     ),
                   );
                 },
@@ -151,7 +151,7 @@ class _SplashScreenState extends State<SplashScreen>
                     size: Size.infinite,
                     painter: _CircleFillPainter(
                       radius: currentRadius,
-                      color: MyColors.backgund,
+                      color: MyColors.green,
                     ),
                   ),
                 );

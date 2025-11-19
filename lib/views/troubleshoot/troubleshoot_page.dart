@@ -10,8 +10,8 @@ class TroubleshootPage extends StatelessWidget {
       onHover: (_) {}, // ← disables problematic hover tracking
       opaque: false,
       child: Scaffold(
-        backgroundColor: MyColors.backgund,
-        appBar: AppBar(title: Text("Troubleshooting"), backgroundColor: Colors.transparent),
+        backgroundColor: MyColors.lightColorScheme.primary,
+        appBar: AppBar(title: Text("Troubleshooting"), backgroundColor: Color(0xff1E1E1E)),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -63,7 +63,7 @@ class TroubleshootPage extends StatelessWidget {
 
   Widget _buildIssue({required String title, required List<String> steps}) {
     return Card(
-      color: MyColors.foregund,
+      color: Color(0xff1E1E1E),
       margin: const EdgeInsets.only(bottom: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,

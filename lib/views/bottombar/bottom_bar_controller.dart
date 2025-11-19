@@ -1,4 +1,3 @@
-// lib/views/bottombar/bottom_bar_controller.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
@@ -18,7 +17,7 @@ class BottomBarController extends StatelessWidget {
       height: 75.h,
       decoration: BoxDecoration(
         // Give it a color, or gradient, etc.
-        color: MyColors.backgund,
+        color: Color(0xff1E1E1E),
         // Add a shadow to make it look like a bar
         boxShadow: [
           BoxShadow(
