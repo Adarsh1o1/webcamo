@@ -1191,10 +1191,10 @@ class _HomePageState extends ConsumerState<HomePage>
                             SelectableText(
                               _ipAddress,
                               style: TextStyle(
-                                fontSize: 36.sp,
+                                fontSize: 28.sp,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
-                                letterSpacing: 1.5,
+                                // letterSpacing: 1.5,
                               ),
                             ),
 
@@ -1213,18 +1213,18 @@ class _HomePageState extends ConsumerState<HomePage>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    Icons.language,
-                                    size: 16.sp,
-                                    color: Colors.white54,
-                                  ),
+                                  // Icon(
+                                  //   Icons.language,
+                                  //   size: 16.sp,
+                                  //   color: Colors.white54,
+                                  // ),
                                   SizedBox(width: 8.w),
                                   Flexible(
                                     child: Text(
-                                      "Enter in PC Browser: $_serverUrl",
+                                      "Url: $_serverUrl",
                                       style: TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 14.sp,
+                                        fontSize: 13.sp,
                                         fontFamily: 'Courier',
                                       ),
                                     ),
