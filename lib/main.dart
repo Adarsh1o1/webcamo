@@ -34,8 +34,8 @@ class MyApp extends StatelessWidget {
             systemNavigationBarColor: MyColors.backgund,
             systemNavigationBarDividerColor: MyColors.backgund,
             statusBarColor: MyColors.backgund,
-            statusBarIconBrightness: Brightness.dark,
-            systemNavigationBarIconBrightness: Brightness.dark,
+            statusBarIconBrightness: Brightness.light,
+            systemNavigationBarIconBrightness: Brightness.light,
           ),
           child: MaterialApp(
             title: 'Webcamo',

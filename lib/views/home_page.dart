@@ -220,10 +220,12 @@ class _HomePageState extends ConsumerState<HomePage>
     //   _peerConnection = null;
     //   _isConnected = false;
     // }
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      _stopStream(); // or _fullCleanup() if you want to stop server too
-    } else if (state == AppLifecycleState.resumed) {
+    // if (state == AppLifecycleState.paused ||
+    //     state == AppLifecycleState.detached) {
+    //   _stopStream(); // or _fullCleanup() if you want to stop server too
+    // } else 
+    if (state == AppLifecycleState.resumed && _isPaused) {
+      print('app paused and restarted camera');
       // ✅ Recreate camera pipeline on resume
       await _restartCameraPreview();
     }
