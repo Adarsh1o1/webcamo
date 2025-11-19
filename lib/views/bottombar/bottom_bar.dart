@@ -67,7 +67,10 @@ class _BottomBarState extends ConsumerState<BottomBar> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () {
+              ref.read(serverProvider.notifier).stopServer();
+              Navigator.of(context).pop(true);
+            },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Stop & Leave'),
           ),
@@ -219,7 +222,7 @@ class _BottomBarState extends ConsumerState<BottomBar> {
         // Use a subtle background color that's slightly
         // different from the scaffold's background
         // ignore: deprecated_member_use
-        backgroundColor: MyColors.backgund,
+        backgroundColor: Color(0xff121212),
         elevation: 1, // Add a very subtle shadow
         title: Text(
           _titles[_currentIndex],

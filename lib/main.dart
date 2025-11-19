@@ -7,15 +7,15 @@ import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      systemNavigationBarColor: MyColors.backgund,
-      systemNavigationBarDividerColor: MyColors.backgund,
-      statusBarColor: MyColors.backgund,
-      statusBarIconBrightness: Brightness.dark,
-      systemNavigationBarIconBrightness: Brightness.dark,
-    ),
-  );
+  // SystemChrome.setSystemUIOverlayStyle(
+  //   const SystemUiOverlayStyle(
+  //     systemNavigationBarColor: MyColors.backgund,
+  //     systemNavigationBarDividerColor: MyColors.backgund,
+  //     statusBarColor: MyColors.backgund,
+  //     statusBarIconBrightness: Brightness.dark,
+  //     systemNavigationBarIconBrightness: Brightness.dark,
+  //   ),
+  // );
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -31,9 +31,9 @@ class MyApp extends StatelessWidget {
       builder: (context, child) {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
-            systemNavigationBarColor: MyColors.backgund,
-            systemNavigationBarDividerColor: MyColors.backgund,
-            statusBarColor: MyColors.backgund,
+            systemNavigationBarColor: Color(0xff1E1E1E),
+            systemNavigationBarDividerColor: Color(0xff1E1E1E),
+            statusBarColor: Color(0xff1E1E1E),
             statusBarIconBrightness: Brightness.light,
             systemNavigationBarIconBrightness: Brightness.light,
           ),
@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
             title: 'Webcamo',
             debugShowCheckedModeBanner: false,
 
-            themeMode: ThemeMode.system,
+            themeMode: ThemeMode.dark,
             theme: ThemeData(
               colorScheme: MyColors.lightColorScheme,
               useMaterial3: true,
