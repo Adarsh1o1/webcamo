@@ -74,7 +74,7 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
   Future<void> _initController(CameraDescription cameraDescription) async {
     final controller = CameraController(
       cameraDescription,
-      ResolutionPreset.medium,
+      ResolutionPreset.high,
       enableAudio: false, // We handle audio separately
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.yuv420
@@ -422,27 +422,27 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
                     SizedBox(height: 20.h),
 
                     // Instructions
-                    Text(
-                      "ADB Command Required:",
-                      style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-                    ),
-                    SizedBox(height: 8.h),
-                    Container(
-                      padding: EdgeInsets.all(12.sp),
-                      decoration: BoxDecoration(
-                        color: Colors.black26,
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      child: SelectableText(
-                        "adb reverse tcp:23233 tcp:23233",
-                        style: TextStyle(
-                          fontFamily: 'Courier',
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 24.h),
+                    // Text(
+                    //   "ADB Command Required:",
+                    //   style: TextStyle(color: Colors.white54, fontSize: 12.sp),
+                    // ),
+                    // SizedBox(height: 8.h),
+                    // Container(
+                    //   padding: EdgeInsets.all(12.sp),
+                    //   decoration: BoxDecoration(
+                    //     color: Colors.black26,
+                    //     borderRadius: BorderRadius.circular(8.r),
+                    //   ),
+                    //   child: SelectableText(
+                    //     "adb reverse tcp:23233 tcp:23233",
+                    //     style: TextStyle(
+                    //       fontFamily: 'Courier',
+                    //       color: Colors.white,
+                    //       fontWeight: FontWeight.bold,
+                    //     ),
+                    //   ),
+                    // ),
+                    // SizedBox(height: 24.h),
 
                     // Start/Stop Button
                     SizedBox(
@@ -498,7 +498,18 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
                     child:
                         _cameraController != null &&
                             _cameraController!.value.isInitialized
-                        ? CameraPreview(_cameraController!)
+                        ? FittedBox(
+                            // 1. "cover" ensures the video fills the square without distortion
+                            fit: BoxFit.cover,
+                            // 2. We must provide the generic shape of the original video
+                            child: SizedBox(
+                              width:
+                                  _cameraController!.value.previewSize!.height,
+                              height:
+                                  _cameraController!.value.previewSize!.width,
+                              child: CameraPreview(_cameraController!),
+                            ),
+                          )
                         : const Center(child: CircularProgressIndicator()),
                   ),
                 ),

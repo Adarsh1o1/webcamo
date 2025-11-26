@@ -124,13 +124,41 @@ def main():
                 try:
                     yuv = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
                     bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+
+                    # yuv = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
+                    # bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+
+                    # --- OPTIMIZATION START ---
+
+                    # 2. CROP FIRST (Much Faster)
+                    # We cut out the center square while it is still "sideways" (Landscape).
+                    # This removes ~40% of the pixels we don't need before we do the heavy rotation.
+                    h, w = bgr.shape[:2]
+                    
+                    if w > h:
+                        # It's landscape (e.g., 1280x720), so we crop the center width
+                        min_dim = h
+                        center_x = w // 2
+                        half_dim = min_dim // 2
+                        
+                        start_x = center_x - half_dim
+                        end_x = center_x + half_dim
+                        
+                        # Crop the middle 720x720 chunk
+                        bgr = bgr[:, start_x:end_x]
+                        
+                    # 3. ROTATE SECOND
+                    # Now we only have to rotate a smaller square image.
+                    bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
+
+
                 except Exception as e:
                     print(f"cv2 error on frame: {e}")
                     continue
 
                 if cam is None:
-                    print(f"Initializing Virtual Camera: {width}x{height} @ 30fps")
-                    cam = pyvirtualcam.Camera(width=width, height=height, fps=30, fmt=PixelFormat.BGR)
+                    print(f"Initializing Virtual Camera: {w}x{h} @ 30fps")
+                    cam = pyvirtualcam.Camera(width=720, height=720, fps=30, fmt=PixelFormat.BGR)
                     print(f"Virtual Camera started: {cam.device}")
                     
 
@@ -138,8 +166,8 @@ def main():
                 cam.sleep_until_next_frame()
                             
                 # Optional: Show preview
-                # cv2.imshow('Preview', bgr)
-                # if cv2.waitKey(1) & 0xFF == 27: break
+                cv2.imshow('Preview', bgr)
+                if cv2.waitKey(1) & 0xFF == 27: break
 
             elif packet_type == 1: # Audio
                 # Read Size (4 bytes)

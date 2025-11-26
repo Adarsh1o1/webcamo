@@ -24,7 +24,7 @@ dependencies:
   flutter_screenutil: ^5.9.3
   flutter_riverpod: ^3.0.3
   flutter_image_compress: ^2.3.0
-  record: ^6.0.0
+  record: ^6.1.2
   
 
 dev_dependencies:
