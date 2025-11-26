@@ -1,37 +1,19 @@
-// lib/views/usb/usb_page.dart
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 import 'package:webcamo/views/usb/usb_streaming_page.dart';
 
 class USBPage extends StatelessWidget {
   const USBPage({super.key});
 
-  // Future<void> _commingSoon(BuildContext context) async {
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: Text(
-  //         'This feature is comming soon',
-  //         style: TextStyle(fontSize: AppSizes.font_sm),
-  //       ),
-  //     ),
-  //   );
-  //   // return null;
-  // }
-
   @override
   Widget build(BuildContext context) {
-    // Dark theme background to match Settings Page
-    // const Color darkBackground = Color(0xFF121212);
-
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
       body: Stack(
         children: [
-          // 1. Background Ambient Glow
           Positioned(
             top: -100,
             left: -100,
@@ -41,41 +23,41 @@ class USBPage extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [MyColors.grey.withOpacity(0.2), Colors.transparent],
+                  colors: [
+                    MyColors.grey.withOpacity(0.2),
+                    Colors.transparent,
+                  ],
                   radius: 0.8.r,
                 ),
               ),
             ),
           ),
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: 60.h),
 
-          // 2. Main Content
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSizes.p24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(flex: 2),
+                // Animation
+                const _RippleUSBIcon(),
 
-                  // Animated Icon with Ripples
-                  const _RippleUSBIcon(),
+                SizedBox(height: 20.h),
 
-                  SizedBox(height: 25.h),
-
-                  // Headline
-                  Text(
-                    'Wired Connection',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      // letterSpacing: 1.2,
-                    ),
+                // Heading Text
+                Text(
+                  "Wired Webcam",
+                  style: TextStyle(
+                    fontSize: 24.sp,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  SizedBox(height: 30.h),
-                  // Start Button
-                  SizedBox(
+                ),
+
+                SizedBox(height: 30.h),
+
+                // Start Button
+                Center(
+                  child: SizedBox(
                     width: 200.w,
                     height: 50.h,
                     child: ElevatedButton.icon(
@@ -104,73 +86,59 @@ class USBPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: 30.h),
+                ),
 
-                  // Description Text with Icons
-                  Padding(
-                     padding: EdgeInsets.symmetric(horizontal: 50.w),
+                SizedBox(height: 30.h),
+
+                // Instruction Points
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 60.w),
+                  child: Align(
+                    alignment: Alignment.center,
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        _InstructionRow(
-                          text: "Ultra-low latency performance",
+                        const _InstructionRow(
+                          text: "Connect Mobile & PC via USB Cable",
                         ),
                         SizedBox(height: 12.h),
-                        _InstructionRow(
-                          text: "Lossless upto 4K video transfer",
+                        const _InstructionRow(
+                          text: "Enable USB Debugging on Phone",
                         ),
                         SizedBox(height: 12.h),
-                        _InstructionRow(
-                          text: "Stable connection & charging",
+                        const _InstructionRow(
+                          text: "Start Streaming & Connect on PC",
                         ),
                       ],
                     ),
                   ),
+                ),
 
-                  const Spacer(flex: 3),
+                SizedBox(height: 15.h),
 
-                  // // "Notify Me" Button
-                  // SizedBox(
-                  //   width: double.infinity,
-                  //   height: 56.h,
-                  //   child: ElevatedButton(
-                  //     onPressed: () {
-                  //       ScaffoldMessenger.of(context).showSnackBar(
-                  //         SnackBar(
-                  //           content: const Text(
-                  //             "We'll notify you when USB mode connects!",
-                  //           ),
-                  //           backgroundColor: MyColors.grey,
-                  //           behavior: SnackBarBehavior.floating,
-                  //         ),
-                  //       );
-                  //     },
-                  //     style: ElevatedButton.styleFrom(
-                  //       backgroundColor: MyColors.green,
-                  //       foregroundColor: Colors.white,
-                  //       elevation: 0,
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(16.r),
-                  //       ),
-                  //     ),
-                  //     child: Row(
-                  //       mainAxisAlignment: MainAxisAlignment.center,
-                  //       children: [
-                  //         Icon(Icons.notifications_active_rounded, size: 20.sp),
-                  //         SizedBox(width: 10.w),
-                  //         Text(
-                  //           "Notify Me When Ready",
-                  //           style: TextStyle(
-                  //             fontSize: 16.sp,
-                  //             fontWeight: FontWeight.bold,
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
-                  // SizedBox(height: 70.h),
-                ],
-              ),
+                // Help Link
+                TextButton(
+                  onPressed: () {
+                   Navigator.push(
+                     context,
+                     MaterialPageRoute(
+                       builder: (context) => const TroubleshootPage(),
+                     ),
+                   );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.white54,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.help_outline, size: 16.sp),
+                      SizedBox(width: 8.w),
+                      const Text("Having trouble?"),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -191,7 +159,7 @@ class _InstructionRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.all(AppSizes.p4 - 1.sp),
           decoration: BoxDecoration(
             color: Colors.white10,
             shape: BoxShape.circle,

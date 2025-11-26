@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 import sys
 import time
+import subprocess
+import os
 
 # Try importing optional dependencies
 try:
@@ -13,34 +15,40 @@ except ImportError:
     print("Error: pyvirtualcam not found. Please run: pip install pyvirtualcam")
     sys.exit(1)
 
-try:
-    import pyaudio
-except ImportError:
-    print("Error: pyaudio not found. Please run: pip install pyaudio")
-    sys.exit(1)
-
 # Configuration
 HOST = '127.0.0.1'
 PORT = 23233
 
-# Audio Configuration
-CHUNK = 1024
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-RATE = 16000
+def start_adb_reverse():
+    """
+    Automatically runs 'adb reverse tcp:23233 tcp:23233'.
+    Checks for 'adb.exe' in the same directory (for bundled apps) or uses system PATH.
+    """
+    adb_cmd = 'adb'
+    
+    # Check if we are running in a bundled environment (PyInstaller)
+    if getattr(sys, 'frozen', False):
+        # Look for adb in the same folder as the executable
+        base_path = os.path.dirname(sys.executable)
+        bundled_adb = os.path.join(base_path, 'adb.exe')
+        if os.path.exists(bundled_adb):
+            adb_cmd = bundled_adb
+    else:
+        # Look in current script directory
+        local_adb = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'adb.exe')
+        if os.path.exists(local_adb):
+            adb_cmd = local_adb
 
-def list_audio_devices(p):
-    info = p.get_host_api_info_by_index(0)
-    numdevices = info.get('deviceCount')
-    found_cable = None
-    print("\nAvailable Audio Devices:")
-    for i in range(0, numdevices):
-        if (p.get_device_info_by_host_api_device_index(0, i).get('maxOutputChannels')) > 0:
-            name = p.get_device_info_by_host_api_device_index(0, i).get('name')
-            print(f"ID {i}: {name}")
-            if "CABLE Input" in name:
-                found_cable = i
-    return found_cable
+    print(f"Using ADB: {adb_cmd}")
+    
+    try:
+        subprocess.run([adb_cmd, 'forward', 'tcp:23233', 'tcp:23233'], check=True, capture_output=True)
+        print("ADB forward successful.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error running ADB forward: {e}")
+        print("Make sure your phone is connected and USB debugging is enabled.")
+    except FileNotFoundError:
+        print("ADB not found. Please install Android Platform Tools or place adb.exe in this folder.")
 
 def recv_exact(sock, size):
     buf = b''
@@ -52,26 +60,10 @@ def recv_exact(sock, size):
     return buf
 
 def main():
-    print(f"Connecting to {HOST}:{PORT}...")
-    print("Ensure you have run: adb reverse tcp:23233 tcp:23233")
-
-    # Initialize Audio
-    p = pyaudio.PyAudio()
-    output_device_index = list_audio_devices(p)
+    print("Starting Webcamo Receiver...")
+    start_adb_reverse()
     
-    if output_device_index is None:
-        print("\nWARNING: 'CABLE Input' not found. Using default output device.")
-        # output_device_index = p.get_default_output_device_info()['index']
-        # Actually, default output is usually speakers. We want a virtual mic.
-        # If no virtual cable, we just play to speakers for testing.
-    else:
-        print(f"\nUsing Audio Device ID {output_device_index} (CABLE Input)")
-
-    audio_stream = p.open(format=FORMAT,
-                          channels=CHANNELS,
-                          rate=RATE,
-                          output=True,
-                          output_device_index=output_device_index)
+    print(f"Connecting to {HOST}:{PORT}...")
 
     # Connect Socket
     try:
@@ -79,7 +71,7 @@ def main():
         s.connect((HOST, PORT))
         print("Connected to phone!")
     except ConnectionRefusedError:
-        print("Connection failed. Check ADB reverse and if the app is streaming.")
+        print("Connection failed. Check if the app is streaming.")
         sys.exit(1)
 
     cam = None
@@ -94,71 +86,108 @@ def main():
             packet_type = int.from_bytes(type_byte, byteorder='big')
             
             if packet_type == 0:  # Video
-                size_data = recv_exact(s, 4)
-                if not size_data:
-                    break
-                size = struct.unpack('>I', size_data)[0]
+                # Read Total Size (4 bytes)
+                total_size_data = recv_exact(s, 4)
+                if not total_size_data: break
+                total_size = struct.unpack('>I', total_size_data)[0]
 
-                width_data = recv_exact(s, 4)
-                if not width_data:
-                    break
-                width = struct.unpack('>I', width_data)[0]
+                # Read Metadata (40 bytes)
+                # Width(4), Height(4), YLen(4), ULen(4), VLen(4), 
+                # YStride(4), UStride(4), VStride(4), UPixelStride(4), VPixelStride(4)
+                metadata_data = recv_exact(s, 40)
+                if not metadata_data: break
+                
+                (width, height, 
+                 y_len, u_len, v_len, 
+                 y_stride, u_stride, v_stride, 
+                 u_pixel_stride, v_pixel_stride) = struct.unpack('>IIIIIIIIII', metadata_data)
 
-                height_data = recv_exact(s, 4)
-                if not height_data:
-                    break
-                height = struct.unpack('>I', height_data)[0]
+                # Read Plane Data
+                y_data = recv_exact(s, y_len)
+                u_data = recv_exact(s, u_len)
+                v_data = recv_exact(s, v_len)
 
-                data = recv_exact(s, size)
-                if data is None:
+                if not y_data or not u_data or not v_data:
                     break
-
-                # We now *expect* proper I420
-                expected = int(width * height * 1.5)
-                if len(data) < expected:
-                    print(f"Warning: got {len(data)} bytes, expected {expected}")
-                    continue
-                if len(data) > expected:
-                    data = data[:expected]  # trim padding if any
 
                 try:
-                    yuv = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
-                    bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+                    # --- RECONSTRUCT IMAGE FROM PLANES ---
+                    
+                    def pad_to_stride(data, h, stride):
+                        expected = h * stride
+                        if len(data) < expected:
+                            return data + b'\0' * (expected - len(data))
+                        return data
 
-                    # yuv = np.frombuffer(data, dtype=np.uint8).reshape((height * 3 // 2, width))
-                    # bgr = cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR_I420)
+                    # 1. Y Plane
+                    # Reshape to (height, stride) then crop to (height, width)
+                    y_data = pad_to_stride(y_data, height, y_stride)
+                    y_plane = np.frombuffer(y_data, dtype=np.uint8).reshape((height, y_stride))
+                    if y_stride > width:
+                        y_plane = y_plane[:, :width]
+                    
+                    # 2. U Plane
+                    # Subsampled height/2, width/2
+                    uv_width = width // 2
+                    uv_height = height // 2
+                    
+                    u_data = pad_to_stride(u_data, uv_height, u_stride)
+                    u_plane = np.frombuffer(u_data, dtype=np.uint8).reshape((uv_height, u_stride))
+                    # De-interleave if pixel stride > 1
+                    if u_pixel_stride > 1:
+                        u_plane = u_plane[:, ::u_pixel_stride]
+                    # Crop width
+                    if u_plane.shape[1] > uv_width:
+                        u_plane = u_plane[:, :uv_width]
 
-                    # --- OPTIMIZATION START ---
+                    # 3. V Plane
+                    v_data = pad_to_stride(v_data, uv_height, v_stride)
+                    v_plane = np.frombuffer(v_data, dtype=np.uint8).reshape((uv_height, v_stride))
+                    if v_pixel_stride > 1:
+                        v_plane = v_plane[:, ::v_pixel_stride]
+                    if v_plane.shape[1] > uv_width:
+                        v_plane = v_plane[:, :uv_width]
 
-                    # 2. CROP FIRST (Much Faster)
-                    # We cut out the center square while it is still "sideways" (Landscape).
-                    # This removes ~40% of the pixels we don't need before we do the heavy rotation.
+                    # 4. Merge to I420 (Planar YUV)
+                    # I420 expects: Y (full), U (1/4), V (1/4) contiguously
+                    # Note: OpenCV's COLOR_YUV2BGR_I420 expects Y, then U, then V
+                    
+                    # Flatten and concatenate
+                    y_flat = y_plane.flatten()
+                    u_flat = u_plane.flatten()
+                    v_flat = v_plane.flatten()
+                    
+                    i420 = np.concatenate([y_flat, u_flat, v_flat])
+                    
+                    # Reshape for OpenCV (height * 1.5, width)
+                    i420_reshaped = i420.reshape((height + height // 2, width))
+                    
+                    # Convert to BGR
+                    bgr = cv2.cvtColor(i420_reshaped, cv2.COLOR_YUV2BGR_I420)
+
+                    # --- OPTIMIZATION: Crop & Rotate ---
                     h, w = bgr.shape[:2]
                     
                     if w > h:
-                        # It's landscape (e.g., 1280x720), so we crop the center width
+                        # Landscape -> Crop center square
                         min_dim = h
                         center_x = w // 2
                         half_dim = min_dim // 2
-                        
                         start_x = center_x - half_dim
                         end_x = center_x + half_dim
-                        
-                        # Crop the middle 720x720 chunk
                         bgr = bgr[:, start_x:end_x]
                         
-                    # 3. ROTATE SECOND
-                    # Now we only have to rotate a smaller square image.
+                    # Rotate 90 degrees
                     bgr = cv2.rotate(bgr, cv2.ROTATE_90_CLOCKWISE)
 
-
                 except Exception as e:
-                    print(f"cv2 error on frame: {e}")
+                    print(f"Error processing frame: {e}")
                     continue
 
                 if cam is None:
+                    h, w = bgr.shape[:2]
                     print(f"Initializing Virtual Camera: {w}x{h} @ 30fps")
-                    cam = pyvirtualcam.Camera(width=720, height=720, fps=30, fmt=PixelFormat.BGR)
+                    cam = pyvirtualcam.Camera(width=w, height=h, fps=30, fmt=PixelFormat.BGR)
                     print(f"Virtual Camera started: {cam.device}")
                     
 
@@ -168,28 +197,9 @@ def main():
                 # Optional: Show preview
                 cv2.imshow('Preview', bgr)
                 if cv2.waitKey(1) & 0xFF == 27: break
-
-            elif packet_type == 1: # Audio
-                # Read Size (4 bytes)
-                size_data = s.recv(4)
-                if not size_data: break
-                size = struct.unpack('>I', size_data)[0]
-                
-                # Read Data
-                data = b''
-                while len(data) < size:
-                    packet = s.recv(size - len(data))
-                    if not packet: break
-                    data += packet
-                
-                if len(data) != size: break
-                
-                # Play Audio
-                audio_stream.write(data)
             
             else:
                 print(f"Unknown packet type: {packet_type}")
-                # Try to recover?
                 break
 
     except Exception as e:
@@ -197,9 +207,6 @@ def main():
     finally:
         print("Cleaning up...")
         if cam: cam.close()
-        audio_stream.stop_stream()
-        audio_stream.close()
-        p.terminate()
         s.close()
         cv2.destroyAllWindows()
 

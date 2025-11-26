@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:record/record.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
@@ -25,15 +24,8 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
   final List<Socket> _clients = [];
   bool _isFlashOn = false;
 
-  // MJPEG Header
-  final _boundary = "boundary";
-
-  StreamSubscription<List<int>>? _audioSubscription;
-  AudioRecorder? _audioRecorder;
-
   // Protocol Constants
   static const int _packetTypeVideo = 0;
-  static const int _packetTypeAudio = 1;
 
   @override
   void initState() {
@@ -47,7 +39,6 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
     WidgetsBinding.instance.removeObserver(this);
     _stopStreaming();
     _cameraController?.dispose();
-    _audioRecorder?.dispose();
     super.dispose();
   }
 
@@ -63,7 +54,10 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
     try {
       _cameras = await availableCameras();
       if (_cameras.isNotEmpty) {
-        _selectedCamera = _cameras.first;
+        _selectedCamera = _cameras.firstWhere(
+          (camera) => camera.lensDirection == CameraLensDirection.front,
+          orElse: () => _cameras.first,
+        );
         await _initController(_selectedCamera!);
       }
     } catch (e) {
@@ -75,7 +69,7 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
     final controller = CameraController(
       cameraDescription,
       ResolutionPreset.high,
-      enableAudio: false, // We handle audio separately
+      enableAudio: false,
       imageFormatGroup: Platform.isAndroid
           ? ImageFormatGroup.yuv420
           : ImageFormatGroup.bgra8888,
@@ -111,7 +105,6 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
       });
 
       _startImageStream();
-      _startAudioStream();
     } catch (e) {
       debugPrint("Error starting server: $e");
       if (mounted) {
@@ -133,140 +126,68 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
     int frameCount = 0;
     _cameraController!.startImageStream((CameraImage image) async {
       frameCount++;
-      if (frameCount % 2 != 0) return;
+      if (frameCount % 2 != 0) return; // Limit FPS if needed
       if (_clients.isEmpty) return;
 
       try {
-        Uint8List bytes;
-
         if (Platform.isAndroid &&
             image.format.group == ImageFormatGroup.yuv420) {
-          bytes = _yuv420ToI420(image);
-        } else if (Platform.isIOS &&
-            image.format.group == ImageFormatGroup.bgra8888) {
-          // Optional: handle iOS later. For now you can skip or add BGRA path.
-          return;
+          
+          // --- OPTIMIZED STREAMING: Send Raw Planes ---
+          // Instead of converting to I420 in Dart (slow), we send the raw planes
+          // and metadata to Python, which can handle it much faster.
+
+          final int width = image.width;
+          final int height = image.height;
+          
+          final Plane planeY = image.planes[0];
+          final Plane planeU = image.planes[1];
+          final Plane planeV = image.planes[2];
+
+          final Uint8List yBytes = planeY.bytes;
+          final Uint8List uBytes = planeU.bytes;
+          final Uint8List vBytes = planeV.bytes;
+
+          // Calculate total packet size
+          // Header (1) + TotalSize (4) + Metadata (40) + Data (Variable)
+          // Metadata: Width(4), Height(4), YLen(4), ULen(4), VLen(4), 
+          //           YStride(4), UStride(4), VStride(4), UPixelStride(4), VPixelStride(4)
+          
+          final int metadataSize = 40;
+          final int payloadSize = metadataSize + yBytes.length + uBytes.length + vBytes.length;
+
+          final List<int> header = [];
+          header.add(_packetTypeVideo); // Type: 0
+          header.addAll(_int32ToBytes(payloadSize)); // Total Size
+
+          // Metadata
+          header.addAll(_int32ToBytes(width));
+          header.addAll(_int32ToBytes(height));
+          header.addAll(_int32ToBytes(yBytes.length));
+          header.addAll(_int32ToBytes(uBytes.length));
+          header.addAll(_int32ToBytes(vBytes.length));
+          header.addAll(_int32ToBytes(planeY.bytesPerRow));
+          header.addAll(_int32ToBytes(planeU.bytesPerRow));
+          header.addAll(_int32ToBytes(planeV.bytesPerRow));
+          header.addAll(_int32ToBytes(planeU.bytesPerPixel ?? 1));
+          header.addAll(_int32ToBytes(planeV.bytesPerPixel ?? 1));
+
+          for (final client in _clients) {
+            client.add(header);
+            client.add(yBytes);
+            client.add(uBytes);
+            client.add(vBytes);
+            await client.flush();
+          }
+
         } else {
-          // Unsupported format
+          // Unsupported format (e.g. iOS BGRA for now)
           return;
-        }
-
-        final sizeBytes = _int32ToBytes(bytes.length);
-        final widthBytes = _int32ToBytes(image.width);
-        final heightBytes = _int32ToBytes(image.height);
-
-        for (final client in _clients) {
-          client.add([_packetTypeVideo]);
-          client.add(sizeBytes);
-          client.add(widthBytes);
-          client.add(heightBytes);
-          client.add(bytes);
-          await client.flush();
         }
       } catch (e) {
         debugPrint("Error streaming video frame: $e");
       }
     });
-  }
-
-  Future<void> _startAudioStream() async {
-    try {
-      _audioRecorder = AudioRecorder();
-
-      // Check permissions
-      if (await _audioRecorder!.hasPermission()) {
-        final stream = await _audioRecorder!.startStream(
-          const RecordConfig(
-            encoder: AudioEncoder.pcm16bits,
-            sampleRate: 16000,
-            numChannels: 1,
-          ),
-        );
-
-        _audioSubscription = stream.listen((data) {
-          if (_clients.isEmpty) return;
-
-          // Protocol: [TYPE:1][SIZE:4][DATA]
-          // Type 1 = Audio
-
-          final sizeBytes = _int32ToBytes(data.length);
-
-          for (final client in _clients) {
-            try {
-              client.add([_packetTypeAudio]);
-              client.add(sizeBytes);
-              client.add(data);
-              client.flush();
-            } catch (e) {
-              debugPrint("Error sending audio: $e");
-            }
-          }
-        });
-      }
-    } catch (e) {
-      debugPrint("Error starting audio stream: $e");
-    }
-  }
-
-  // ... (_concatenatePlanes, _int32ToBytes)
-
-  Uint8List _yuv420ToI420(CameraImage image) {
-    assert(image.format.group == ImageFormatGroup.yuv420);
-
-    final int width = image.width;
-    final int height = image.height;
-
-    final Plane planeY = image.planes[0];
-    final Plane planeU = image.planes[1];
-    final Plane planeV = image.planes[2];
-
-    final int ySize = width * height;
-    final int uvSize = width * height ~/ 4; // because of 4:2:0
-
-    final Uint8List out = Uint8List(ySize + uvSize * 2);
-
-    int offset = 0;
-
-    // --- Copy Y plane (no subsampling) ---
-    for (int row = 0; row < height; row++) {
-      final int rowStart = row * planeY.bytesPerRow;
-      out.setRange(
-        offset,
-        offset + width,
-        planeY.bytes.sublist(rowStart, rowStart + width),
-      );
-      offset += width;
-    }
-
-    // --- Copy U plane (subsampled) ---
-    final int uvWidth = width ~/ 2;
-    final int uvHeight = height ~/ 2;
-
-    final int uBytesPerRow = planeU.bytesPerRow;
-    final int uPixelStride = planeU.bytesPerPixel ?? 1;
-
-    for (int row = 0; row < uvHeight; row++) {
-      final int rowStart = row * uBytesPerRow;
-      for (int col = 0; col < uvWidth; col++) {
-        out[offset + row * uvWidth + col] =
-            planeU.bytes[rowStart + col * uPixelStride];
-      }
-    }
-    offset += uvSize;
-
-    // --- Copy V plane (subsampled) ---
-    final int vBytesPerRow = planeV.bytesPerRow;
-    final int vPixelStride = planeV.bytesPerPixel ?? 1;
-
-    for (int row = 0; row < uvHeight; row++) {
-      final int rowStart = row * vBytesPerRow;
-      for (int col = 0; col < uvWidth; col++) {
-        out[offset + row * uvWidth + col] =
-            planeV.bytes[rowStart + col * vPixelStride];
-      }
-    }
-
-    return out;
   }
 
   List<int> _int32ToBytes(int value) {
@@ -283,11 +204,6 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
         _cameraController!.value.isStreamingImages) {
       await _cameraController!.stopImageStream();
     }
-
-    await _audioSubscription?.cancel();
-    _audioSubscription = null;
-    await _audioRecorder?.stop();
-    _audioRecorder = null;
 
     for (final client in _clients) {
       client.destroy();
@@ -368,112 +284,152 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(16.sp),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSizes.p16,
+            vertical: AppSizes.p24,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Status Card
+              // 1. Connection Info Card (Dashboard Style)
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(20.r),
                   border: Border.all(color: Colors.white12),
                 ),
-                padding: EdgeInsets.all(20.sp),
-                child: Column(
-                  children: [
-                    // Status Badge
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 6.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _isStreaming
-                            ? successColor.withOpacity(0.2)
-                            : errorColor.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(30.r),
-                        border: Border.all(
-                          color: _isStreaming ? successColor : errorColor,
+                child: Padding(
+                  padding: EdgeInsets.all(20.sp),
+                  child: Column(
+                    children: [
+                      // Status Badge
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 6.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isStreaming
+                              ? successColor.withOpacity(0.2)
+                              : errorColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(30.r),
+                          border: Border.all(
+                            color: _isStreaming ? successColor : errorColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isStreaming ? Icons.link : Icons.link_off,
+                              size: 16.sp,
+                              color: _isStreaming ? successColor : errorColor,
+                            ),
+                            SizedBox(width: 8.w),
+                            Text(
+                              _isStreaming
+                                  ? "STREAMING ACTIVE"
+                                  : "READY TO STREAM",
+                              style: TextStyle(
+                                color: _isStreaming ? successColor : errorColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12.sp,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _isStreaming ? Icons.link : Icons.link_off,
-                            size: 16.sp,
-                            color: _isStreaming ? successColor : errorColor,
+
+                      SizedBox(height: 20.h),
+
+                      // Connection Info (Hero Text)
+                      Text(
+                        "USB Port",
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4.h),
+                      SelectableText(
+                        "23233",
+                        style: TextStyle(
+                          fontSize: 36.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1.5,
+                        ),
+                      ),
+
+                      SizedBox(height: 10.h),
+
+                      // ADB Command Hint
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black26,
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.terminal,
+                              size: 16.sp,
+                              color: Colors.white54,
+                            ),
+                            SizedBox(width: 8.w),
+                            Flexible(
+                              child: Text(
+                                "adb reverse tcp:23233 tcp:23233",
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14.sp,
+                                  fontFamily: 'Courier',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 24.h),
+
+                      // Start/Stop Server Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isStreaming ? _stopStreaming : _startServer,
+                          icon: Icon(
+                            _isStreaming ? Icons.power_off_rounded : Icons.power_settings_new,
                           ),
-                          SizedBox(width: 8.w),
-                          Text(
-                            _isStreaming
-                                ? "STREAMING ACTIVE"
-                                : "READY TO STREAM",
-                            style: TextStyle(
-                              color: _isStreaming ? successColor : errorColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12.sp,
+                          label: Text(_isStreaming ? "Stop Streaming" : "Start Streaming"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _isStreaming
+                                ? Colors.red.shade900.withOpacity(0.8)
+                                : MyColors.green,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 12.h),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 20.h),
-
-                    // Instructions
-                    // Text(
-                    //   "ADB Command Required:",
-                    //   style: TextStyle(color: Colors.white54, fontSize: 12.sp),
-                    // ),
-                    // SizedBox(height: 8.h),
-                    // Container(
-                    //   padding: EdgeInsets.all(12.sp),
-                    //   decoration: BoxDecoration(
-                    //     color: Colors.black26,
-                    //     borderRadius: BorderRadius.circular(8.r),
-                    //   ),
-                    //   child: SelectableText(
-                    //     "adb reverse tcp:23233 tcp:23233",
-                    //     style: TextStyle(
-                    //       fontFamily: 'Courier',
-                    //       color: Colors.white,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    // ),
-                    // SizedBox(height: 24.h),
-
-                    // Start/Stop Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isStreaming ? _stopStreaming : _startServer,
-                        icon: Icon(
-                          _isStreaming ? Icons.stop : Icons.play_arrow,
-                        ),
-                        label: Text(
-                          _isStreaming ? "Stop Streaming" : "Start Streaming",
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isStreaming
-                              ? Colors.red.shade900
-                              : MyColors.green,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
               SizedBox(height: 24.h),
 
-              // Preview
+              // 2. Camera Preview & Controls Section
               Text(
                 "LIVE PREVIEW",
                 style: TextStyle(
@@ -485,60 +441,137 @@ class _UsbStreamingPageState extends State<UsbStreamingPage>
               ),
               SizedBox(height: 10.h),
 
-              AspectRatio(
-                aspectRatio: 1, // Square preview
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(24.r),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(23.r),
-                    child:
-                        _cameraController != null &&
-                            _cameraController!.value.isInitialized
-                        ? FittedBox(
-                            // 1. "cover" ensures the video fills the square without distortion
-                            fit: BoxFit.cover,
-                            // 2. We must provide the generic shape of the original video
-                            child: SizedBox(
-                              width:
-                                  _cameraController!.value.previewSize!.height,
-                              height:
-                                  _cameraController!.value.previewSize!.width,
-                              child: CameraPreview(_cameraController!),
-                            ),
-                          )
-                        : const Center(child: CircularProgressIndicator()),
-                  ),
-                ),
-              ),
-
-              SizedBox(height: 16.h),
-
-              // Controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Camera Viewport
+              Stack(
                 children: [
-                  IconButton(
-                    onPressed: _switchCamera,
-                    icon: const Icon(Icons.cameraswitch, color: Colors.white),
-                    iconSize: 32.sp,
-                  ),
-                  SizedBox(width: 32.w),
-                  IconButton(
-                    onPressed: _toggleFlash,
-                    icon: Icon(
-                      _isFlashOn ? Icons.flash_on : Icons.flash_off,
-                      color: _isFlashOn ? Colors.yellow : Colors.white,
+                  AspectRatio(
+                    aspectRatio: 1, // Square aspect for preview
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(24.r),
+                        border: Border.all(
+                          color: Colors.white12,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 20,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(23.r),
+                        child: _cameraController != null &&
+                                _cameraController!.value.isInitialized
+                            ? FittedBox(
+                                fit: BoxFit.cover,
+                                child: SizedBox(
+                                  width: _cameraController!
+                                      .value.previewSize!.height,
+                                  height: _cameraController!
+                                      .value.previewSize!.width,
+                                  child: CameraPreview(_cameraController!),
+                                ),
+                              )
+                            : const Center(child: CircularProgressIndicator()),
+                      ),
                     ),
-                    iconSize: 32.sp,
+                  ),
+
+                  // Camera Control Bar (Floating)
+                  Positioned(
+                    bottom: 16.h,
+                    left: 16.w,
+                    right: 16.w,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20.w,
+                        vertical: 12.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(30.r),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Switch Camera
+                          _ControlIcon(
+                            icon: Icons.cameraswitch_rounded,
+                            onTap: _cameras.length < 2 ? null : _switchCamera,
+                          ),
+
+                          // Flash Toggle
+                          _ControlIcon(
+                            icon: _isFlashOn
+                                ? Icons.flash_on_rounded
+                                : Icons.flash_off_rounded,
+                            onTap: _toggleFlash,
+                            isActive: _isFlashOn,
+                            activeColor: Colors.yellow,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
+
+              SizedBox(height: 24.h),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Custom Widget for Camera Controls ---
+class _ControlIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool isActive;
+  final Color? activeColor;
+  final bool isDestructive;
+
+  const _ControlIcon({
+    required this.icon,
+    this.onTap,
+    this.isActive = false,
+    this.activeColor,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color iconColor = Colors.white;
+    Color bgColor = Colors.white10;
+
+    if (isActive && activeColor != null) {
+      iconColor = Colors.black;
+      bgColor = activeColor!;
+    } else if (isDestructive) {
+      iconColor = Colors.white;
+      bgColor = Colors.red.withOpacity(0.8);
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 50.sp,
+        height: 50.sp,
+        decoration: BoxDecoration(
+          color: onTap == null ? Colors.white10 : bgColor,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: onTap == null ? Colors.white24 : iconColor,
+          size: 24.sp,
         ),
       ),
     );
