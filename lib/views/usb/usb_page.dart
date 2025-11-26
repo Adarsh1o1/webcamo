@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/views/usb/usb_streaming_page.dart';
 
 class USBPage extends StatelessWidget {
   const USBPage({super.key});
@@ -73,30 +74,32 @@ class USBPage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 30.h),
-                  Container(
-                    // padding: EdgeInsets.symmetric(
-                    //   horizontal: 12.w,
-                    //   vertical: 6.h,
-                    // ),
-                    decoration: BoxDecoration(
-                      color: MyColors.green,
-                      borderRadius: BorderRadius.circular(AppSizes.radius_full),
-                      border: Border.all(
-                        color: MyColors.green.withOpacity(
-                          0.5,
+                  // Start Button
+                  SizedBox(
+                    width: 200.w,
+                    height: 50.h,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const UsbStreamingPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.usb),
+                      label: const Text('Start Streaming'),
+                      style: ElevatedButton.styleFrom(
+                        textStyle: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.w600,
                         ),
-                        width: 1,
-                      ),
-                    ),
-                    child: Padding(
-                      padding:  EdgeInsets.symmetric(horizontal: AppSizes.p48, vertical: AppSizes.p8),
-                      child: Text(
-                        "COMING SOON",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: AppSizes.font_md,
-                          // letterSpacing: 1.5,
+                        backgroundColor: MyColors.green,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: MyColors.green.withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30.r),
                         ),
                       ),
                     ),

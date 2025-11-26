@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  camera: ^0.10.6
-  permission_handler: ^12.0.1
+  camera: ^0.11.3
+  permission_handler: ^11.4.0
   wakelock_plus: ^1.4.0
   path_provider: ^2.1.2
   flutter_webrtc: ^1.2.0
@@ -23,13 +23,15 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_screenutil: ^5.9.3
   flutter_riverpod: ^3.0.3
+  flutter_image_compress: ^2.3.0
+  record: ^6.0.0
   
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   # This tells the package to generate icons for Android
