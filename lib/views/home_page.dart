@@ -1590,7 +1590,7 @@ class _InstructionRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.all(AppSizes.p4 - 1.sp),
           decoration: BoxDecoration(
             color: Colors.white10,
             shape: BoxShape.circle,
