@@ -5,8 +5,17 @@ import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 import 'package:webcamo/views/usb/usb_streaming_page.dart';
 
-class USBPage extends StatelessWidget {
+// Convert to Stateful Widget
+class USBPage extends StatefulWidget {
   const USBPage({super.key});
+
+  @override
+  State<USBPage> createState() => _USBPageState();
+}
+
+class _USBPageState extends State<USBPage> {
+  // 1. State variable to toggle view
+  bool _showStreamingWidget = false;
 
   @override
   Widget build(BuildContext context) {
@@ -14,133 +23,143 @@ class USBPage extends StatelessWidget {
       backgroundColor: MyColors.lightColorScheme.primary,
       body: Stack(
         children: [
-          Positioned(
-            top: -100,
-            left: -100,
-            right: -100,
-            child: Container(
-              height: 500.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    MyColors.grey.withOpacity(0.2),
-                    Colors.transparent,
-                  ],
-                  radius: 0.8.r,
+          if (_showStreamingWidget == false)
+            Positioned(
+              top: -100,
+              left: -100,
+              right: -100,
+              child: Container(
+                height: 500.h,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      MyColors.grey.withOpacity(0.2),
+                      Colors.transparent,
+                    ],
+                    radius: 0.8.r,
+                  ),
                 ),
               ),
             ),
-          ),
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(height: 60.h),
 
-                // Animation
-                const _RippleUSBIcon(),
+          // 2. Conditional Rendering
+          if (_showStreamingWidget)
+            // Show streaming widget covering the page
+            SafeArea(
+              child: UsbStreamingPage(
+                onStop: () {
+                  // Callback to return to initial view
+                  setState(() {
+                    _showStreamingWidget = false;
+                  });
+                },
+              ),
+            )
+          else
+            // Show Initial UI
+            SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(height: 60.h),
 
-                SizedBox(height: 20.h),
+                  const _RippleUSBIcon(),
 
-                // Heading Text
-                Text(
-                  "Wired Webcam",
-                  style: TextStyle(
-                    fontSize: 24.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                  SizedBox(height: 20.h),
+
+                  Text(
+                    "Wired Webcam",
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
 
-                SizedBox(height: 30.h),
+                  SizedBox(height: 30.h),
 
-                // Start Button
-                Center(
-                  child: SizedBox(
-                    width: 200.w,
-                    height: 50.h,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const UsbStreamingPage(),
+                  Center(
+                    child: SizedBox(
+                      width: 200.w,
+                      height: 50.h,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // 3. Switch to Streaming View
+                          setState(() {
+                            _showStreamingWidget = true;
+                          });
+                        },
+                        icon: const Icon(Icons.usb),
+                        label: const Text('Start Streaming'),
+                        style: ElevatedButton.styleFrom(
+                          textStyle: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
                           ),
-                        );
-                      },
-                      icon: const Icon(Icons.usb),
-                      label: const Text('Start Streaming'),
-                      style: ElevatedButton.styleFrom(
-                        textStyle: TextStyle(
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        backgroundColor: MyColors.green,
-                        foregroundColor: Colors.white,
-                        elevation: 4,
-                        shadowColor: MyColors.green.withOpacity(0.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30.r),
+                          backgroundColor: MyColors.green,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shadowColor: MyColors.green.withOpacity(0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.r),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                SizedBox(height: 30.h),
+                  SizedBox(height: 30.h),
 
-                // Instruction Points
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 60.w),
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 60.w),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const _InstructionRow(
+                            text: "Connect Mobile & PC via USB Cable",
+                          ),
+                          SizedBox(height: 12.h),
+                          const _InstructionRow(
+                            text: "Enable USB Debugging on Phone",
+                          ),
+                          SizedBox(height: 12.h),
+                          const _InstructionRow(
+                            text: "Start Streaming & Connect on PC",
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15.h),
+
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TroubleshootPage(),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white54,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const _InstructionRow(
-                          text: "Connect Mobile & PC via USB Cable",
-                        ),
-                        SizedBox(height: 12.h),
-                        const _InstructionRow(
-                          text: "Enable USB Debugging on Phone",
-                        ),
-                        SizedBox(height: 12.h),
-                        const _InstructionRow(
-                          text: "Start Streaming & Connect on PC",
-                        ),
+                        Icon(Icons.help_outline, size: 16.sp),
+                        SizedBox(width: 8.w),
+                        const Text("Having trouble?"),
                       ],
                     ),
                   ),
-                ),
-
-                SizedBox(height: 15.h),
-
-                // Help Link
-                TextButton(
-                  onPressed: () {
-                   Navigator.push(
-                     context,
-                     MaterialPageRoute(
-                       builder: (context) => const TroubleshootPage(),
-                     ),
-                   );
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white54,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.help_outline, size: 16.sp),
-                      SizedBox(width: 8.w),
-                      const Text("Having trouble?"),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -170,7 +189,7 @@ class _InstructionRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(color: Colors.white60, fontSize: 13.sp,),
+            style: TextStyle(color: Colors.white60, fontSize: 13.sp),
           ),
         ),
       ],

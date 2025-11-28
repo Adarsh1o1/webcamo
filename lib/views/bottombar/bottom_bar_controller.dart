@@ -37,7 +37,7 @@ class BottomBarController extends StatelessWidget {
             // Each button is a custom widget
             _buildNavItem(icon: Icons.wifi, label: 'Wi-Fi', index: 0),
             _buildNavItem(icon: Icons.usb, label: 'USB', index: 1),
-            _buildNavItem(icon: Icons.settings, label: 'Settings', index: 2),
+            _buildNavItem(icon: Icons.contact_support_rounded, label: 'More', index: 2),
           ],
         ),
       ),
