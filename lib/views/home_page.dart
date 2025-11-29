@@ -359,7 +359,6 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _toggleFlash() async {
     if (_localStream == null || _localStream!.getVideoTracks().isEmpty) return;
     if (_isPaused) {
-
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -373,8 +372,6 @@ class _HomePageState extends ConsumerState<HomePage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
-      
-
       return;
     }
 
