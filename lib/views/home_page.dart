@@ -1175,25 +1175,30 @@ class _HomePageState extends ConsumerState<HomePage>
 
                             SizedBox(height: 20.h),
 
-                            // The IP Address (Hero Text)
-                            Text(
-                              "WiFi IP Address",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
+                             Row(
+                               mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "WiFi IP: ",
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  SelectableText(
+                                    _ipAddress,
+                                    style: TextStyle(
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      // letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(height: 4.h),
-                            SelectableText(
-                              _ipAddress,
-                              style: TextStyle(
-                                fontSize: 28.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                // letterSpacing: 1.5,
-                              ),
-                            ),
+                          
 
                             SizedBox(height: 10.h),
 

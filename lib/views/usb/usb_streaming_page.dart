@@ -135,6 +135,18 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
             });
           }
         });
+
+        socket.handleError((error) {
+          debugPrint("Socket error: $error");
+          _clients.remove(socket);
+          if (mounted && _clients.isEmpty) {
+            setState(() {
+              _isConnected = false; // <-- NEW: Client disconnected
+            });
+          }
+        });
+
+
       });
 
       _startImageStream();
