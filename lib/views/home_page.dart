@@ -17,7 +17,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/gestures.dart';
+// import 'package:flutter/gestures.dart';
 import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
@@ -359,7 +359,6 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _toggleFlash() async {
     if (_localStream == null || _localStream!.getVideoTracks().isEmpty) return;
     if (_isPaused) {
-
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -373,8 +372,6 @@ class _HomePageState extends ConsumerState<HomePage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
-      
-
       return;
     }
 
@@ -764,109 +761,109 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  void _showHelpDialog(BuildContext context) {
-    // We get the colors from the theme
-    final ColorScheme colors = Theme.of(context).colorScheme;
+  // void _showHelpDialog(BuildContext context) {
+  //   // We get the colors from the theme
+  //   final ColorScheme colors = Theme.of(context).colorScheme;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'How to Use Webcamo',
-          style: TextStyle(
-            fontSize: AppSizes.font_lg,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 60.w,
-          height: 300.h,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '1. Start the Server',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  '2. Connect on PC',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                // const Text(
-                //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                // ),
-                const Text(
-                  '3. Voila! ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text(
+  //         'How to Use Webcamo',
+  //         style: TextStyle(
+  //           fontSize: AppSizes.font_lg,
+  //           fontWeight: FontWeight.bold,
+  //         ),
+  //       ),
+  //       content: SizedBox(
+  //         width: 60.w,
+  //         height: 300.h,
+  //         child: SingleChildScrollView(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               const Text(
+  //                 '1. Start the Server',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 '2. Connect on PC',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               // const Text(
+  //               //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //               // ),
+  //               const Text(
+  //                 '3. Voila! ',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
 
-                // --- THIS IS THE NEW PART ---
-                RichText(
-                  text: TextSpan(
-                    // Use the default text style from the dialog
-                    style: Theme.of(context).dialogTheme.contentTextStyle,
-                    children: [
-                      TextSpan(
-                        text:
-                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
-                        style: TextStyle(
-                          color: colors
-                              .onSurface, // This will be black in light mode and white in dark mode
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Buying me a Coffee.',
-                        style: TextStyle(
-                          color: colors.primary, // Make it look like a link
-                          decoration: TextDecoration.underline,
-                        ),
-                        // This makes the text tappable
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            // Open the link when tapped
-                            _launchURL(
-                              'https://www.buymeacoffee.com/adarsh1o1',
-                            );
-                          },
-                      ),
-                    ],
-                  ),
-                ),
-                // --- END OF NEW PART ---
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it!',
-              style: TextStyle(
-                fontSize: AppSizes.font_md,
-                fontWeight: FontWeight.bold,
-                color: MyColors.green,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //               // --- THIS IS THE NEW PART ---
+  //               RichText(
+  //                 text: TextSpan(
+  //                   // Use the default text style from the dialog
+  //                   style: Theme.of(context).dialogTheme.contentTextStyle,
+  //                   children: [
+  //                     TextSpan(
+  //                       text:
+  //                           'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+  //                       style: TextStyle(
+  //                         color: colors
+  //                             .onSurface, // This will be black in light mode and white in dark mode
+  //                       ),
+  //                     ),
+  //                     TextSpan(
+  //                       text: 'Buying me a Coffee.',
+  //                       style: TextStyle(
+  //                         color: colors.primary, // Make it look like a link
+  //                         decoration: TextDecoration.underline,
+  //                       ),
+  //                       // This makes the text tappable
+  //                       recognizer: TapGestureRecognizer()
+  //                         ..onTap = () {
+  //                           // Open the link when tapped
+  //                           _launchURL(
+  //                             'https://www.buymeacoffee.com/adarsh1o1',
+  //                           );
+  //                         },
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               // --- END OF NEW PART ---
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //       actions: [
+  //         GestureDetector(
+  //           onTap: () => Navigator.of(context).pop(),
+  //           child: Text(
+  //             'Got it!',
+  //             style: TextStyle(
+  //               fontSize: AppSizes.font_md,
+  //               fontWeight: FontWeight.bold,
+  //               color: MyColors.green,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -1178,25 +1175,30 @@ class _HomePageState extends ConsumerState<HomePage>
 
                             SizedBox(height: 20.h),
 
-                            // The IP Address (Hero Text)
-                            Text(
-                              "WiFi IP Address",
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12.sp,
-                                fontWeight: FontWeight.w600,
+                             Row(
+                               mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    "WiFi IP: ",
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  SelectableText(
+                                    _ipAddress,
+                                    style: TextStyle(
+                                      fontSize: 20.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      // letterSpacing: 1.5,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(height: 4.h),
-                            SelectableText(
-                              _ipAddress,
-                              style: TextStyle(
-                                fontSize: 36.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
+                          
 
                             SizedBox(height: 10.h),
 
@@ -1213,18 +1215,18 @@ class _HomePageState extends ConsumerState<HomePage>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
-                                    Icons.language,
-                                    size: 16.sp,
-                                    color: Colors.white54,
-                                  ),
+                                  // Icon(
+                                  //   Icons.language,
+                                  //   size: 16.sp,
+                                  //   color: Colors.white54,
+                                  // ),
                                   SizedBox(width: 8.w),
                                   Flexible(
                                     child: Text(
-                                      "Enter in PC Browser: $_serverUrl",
+                                      "Url: $_serverUrl",
                                       style: TextStyle(
                                         color: Colors.white70,
-                                        fontSize: 14.sp,
+                                        fontSize: 13.sp,
                                         fontFamily: 'Courier',
                                       ),
                                     ),
@@ -1590,7 +1592,7 @@ class _InstructionRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.all(AppSizes.p4 - 1.sp),
           decoration: BoxDecoration(
             color: Colors.white10,
             shape: BoxShape.circle,

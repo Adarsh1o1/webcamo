@@ -1,19 +1,16 @@
 // lib/views/main_navigation_screen.dart
 // (This replaces your 'BottomBar' widget)
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/providers/settings_provider.dart';
-import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/providers/usb_provider.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/views/bottombar/bottom_bar_controller.dart';
 import 'package:webcamo/views/home_page.dart';
 import 'package:webcamo/views/settings/settings_page.dart'; // <-- NEW
 import 'package:webcamo/views/usb/usb_page.dart'; // <-- NEW
-import 'package:url_launcher/url_launcher.dart';
 
 class BottomBar extends ConsumerStatefulWidget {
   const BottomBar({super.key});
@@ -33,7 +30,11 @@ class _BottomBarState extends ConsumerState<BottomBar> {
   ];
 
   // Titles for the AppBar
-  static const List<String> _titles = ['Webcamo', 'USB Connection', 'Settings'];
+  static const List<String> _titles = [
+    'Eazycam',
+    'USB Connection',
+    'More Info',
+  ];
 
   @override
   void initState() {
@@ -44,38 +45,44 @@ class _BottomBarState extends ConsumerState<BottomBar> {
     });
   }
 
-  Future<void> _launchURL(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    launchUrl(url);
-    // if (!await ) {
-    //   _showErrorDialog('Could not launch $urlString');
-    // }
-  }
+  Future<bool> _showServerWarningDialog({required bool isUsb}) async {
+    final title = isUsb ? 'Streaming Active' : 'Server Running';
+    final content =
+        isUsb
+            ? 'USB streaming is currently active. Navigating away will stop the stream.\n\nAre you sure?'
+            : 'The server is currently active. Navigating away will stop the server and disconnect any connected devices.\n\nAre you sure?';
 
-  Future<bool> _showServerWarningDialog() async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Server Running'),
-        content: const Text(
-          'The server is currently active. Navigating away will stop the server and disconnect any connected devices.\n\nAre you sure?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: Text(title),
+            content: Text(content),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (isUsb) {
+                    // Stop USB streaming
+                    // The actual stopping happens when the widget is disposed,
+                    // but we can also explicitly update the provider if needed,
+                    // though navigation will trigger dispose of UsbStreamingPage.
+                    // However, to be safe and consistent with Home page logic:
+                    ref.read(usbProvider.notifier).setStreaming(false);
+                  } else {
+                    ref.read(serverProvider.notifier).stopServer();
+                  }
+                  Navigator.of(context).pop(true);
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Stop & Leave'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              ref.read(serverProvider.notifier).stopServer();
-              Navigator.of(context).pop(true);
-            },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Stop & Leave'),
-          ),
-        ],
-      ),
     );
 
     return result ?? false;
@@ -88,7 +95,7 @@ class _BottomBarState extends ConsumerState<BottomBar> {
 
       if (isServerRunning) {
         // Show confirmation dialog
-        final shouldProceed = await _showServerWarningDialog();
+        final shouldProceed = await _showServerWarningDialog(isUsb: false);
 
         if (shouldProceed) {
           // User confirmed - stop server and cleanup
@@ -103,115 +110,32 @@ class _BottomBarState extends ConsumerState<BottomBar> {
       }
     }
 
+    // If trying to leave USB page and streaming is active
+    if (_currentIndex == 1 && newIndex != 1) {
+      final isUsbStreaming = ref.read(isUsbStreamingProvider);
+
+      if (isUsbStreaming) {
+        // Show confirmation dialog
+        final shouldProceed = await _showServerWarningDialog(isUsb: true);
+
+        if (shouldProceed) {
+          // User confirmed - stop streaming and cleanup
+          if (mounted) {
+            setState(() {
+              _currentIndex = newIndex;
+            });
+          }
+        }
+        // If user cancels, stay on USB page (do nothing)
+        return;
+      }
+    }
+
     if (mounted) {
       setState(() {
         _currentIndex = newIndex;
       });
     }
-  }
-
-  void _showHelpDialog(BuildContext context) {
-    // We get the colors from the theme
-    final ColorScheme colors = Theme.of(context).colorScheme;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'How to Use Webcamo',
-          style: TextStyle(
-            fontSize: AppSizes.font_lg,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 60.w,
-          height: 300.h,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '1. Start the Server',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  '2. Connect on PC',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                // const Text(
-                //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                // ),
-                const Text(
-                  '3. Voila! ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-
-                // --- THIS IS THE NEW PART ---
-                RichText(
-                  text: TextSpan(
-                    // Use the default text style from the dialog
-                    style: Theme.of(context).dialogTheme.contentTextStyle,
-                    children: [
-                      TextSpan(
-                        text:
-                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
-                        style: TextStyle(
-                          color: colors
-                              .onSurface, // This will be black in light mode and white in dark mode
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Buying me a Coffee.',
-                        style: TextStyle(
-                          color: colors.primary, // Make it look like a link
-                          decoration: TextDecoration.underline,
-                        ),
-                        // This makes the text tappable
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            // Open the link when tapped
-                            _launchURL(
-                              'https://www.buymeacoffee.com/adarsh1o1',
-                            );
-                          },
-                      ),
-                    ],
-                  ),
-                ),
-                // --- END OF NEW PART ---
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it!',
-              style: TextStyle(
-                fontSize: AppSizes.font_md,
-                fontWeight: FontWeight.bold,
-                color: MyColors.green,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -231,16 +155,6 @@ class _BottomBarState extends ConsumerState<BottomBar> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        // elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              _showHelpDialog(context);
-            },
-            icon: const Icon(Icons.help_outline_rounded),
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: _pages[_currentIndex], // Show current page
       bottomNavigationBar: BottomBarController(

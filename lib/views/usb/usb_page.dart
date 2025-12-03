@@ -1,175 +1,166 @@
-// lib/views/usb/usb_page.dart
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
+import 'package:webcamo/views/troubleshoot/troubleshoot_page_usb.dart';
+import 'package:webcamo/views/usb/usb_streaming_page.dart';
 
-class USBPage extends StatelessWidget {
+// Convert to Stateful Widget
+class USBPage extends StatefulWidget {
   const USBPage({super.key});
 
-  // Future<void> _commingSoon(BuildContext context) async {
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     SnackBar(
-  //       content: Text(
-  //         'This feature is comming soon',
-  //         style: TextStyle(fontSize: AppSizes.font_sm),
-  //       ),
-  //     ),
-  //   );
-  //   // return null;
-  // }
+  @override
+  State<USBPage> createState() => _USBPageState();
+}
+
+class _USBPageState extends State<USBPage> {
+  // 1. State variable to toggle view
+  bool _showStreamingWidget = false;
 
   @override
   Widget build(BuildContext context) {
-    // Dark theme background to match Settings Page
-    // const Color darkBackground = Color(0xFF121212);
-
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
       body: Stack(
         children: [
-          // 1. Background Ambient Glow
-          Positioned(
-            top: -100,
-            left: -100,
-            right: -100,
-            child: Container(
-              height: 500.h,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [MyColors.grey.withOpacity(0.2), Colors.transparent],
-                  radius: 0.8.r,
+          if (_showStreamingWidget == false)
+            Positioned(
+              top: -100,
+              left: -100,
+              right: -100,
+              child: Container(
+                height: 500.h,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      MyColors.grey.withOpacity(0.2),
+                      Colors.transparent,
+                    ],
+                    radius: 0.8.r,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // 2. Main Content
-          SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSizes.p24),
+          // 2. Conditional Rendering
+          if (_showStreamingWidget)
+            // Show streaming widget covering the page
+            SafeArea(
+              child: UsbStreamingPage(
+                onStop: () {
+                  // Callback to return to initial view
+                  setState(() {
+                    _showStreamingWidget = false;
+                  });
+                },
+              ),
+            )
+          else
+            // Show Initial UI
+            SingleChildScrollView(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Spacer(flex: 2),
+                  SizedBox(height: 60.h),
 
-                  // Animated Icon with Ripples
                   const _RippleUSBIcon(),
 
-                  SizedBox(height: 25.h),
+                  SizedBox(height: 20.h),
 
-                  // Headline
                   Text(
-                    'Wired Connection',
-                    textAlign: TextAlign.center,
+                    "Wired Webcam",
                     style: TextStyle(
                       fontSize: 24.sp,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
-                      // letterSpacing: 1.2,
                     ),
                   ),
-                  SizedBox(height: 30.h),
-                  Container(
-                    // padding: EdgeInsets.symmetric(
-                    //   horizontal: 12.w,
-                    //   vertical: 6.h,
-                    // ),
-                    decoration: BoxDecoration(
-                      color: MyColors.green,
-                      borderRadius: BorderRadius.circular(AppSizes.radius_full),
-                      border: Border.all(
-                        color: MyColors.green.withOpacity(
-                          0.5,
-                        ),
-                        width: 1,
-                      ),
-                    ),
-                    child: Padding(
-                      padding:  EdgeInsets.symmetric(horizontal: AppSizes.p48, vertical: AppSizes.p8),
-                      child: Text(
-                        "COMING SOON",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: AppSizes.font_md,
-                          // letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
+
                   SizedBox(height: 30.h),
 
-                  // Description Text with Icons
+                  Center(
+                    child: SizedBox(
+                      width: 200.w,
+                      height: 50.h,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // 3. Switch to Streaming View
+                          setState(() {
+                            _showStreamingWidget = true;
+                          });
+                        },
+                        icon: const Icon(Icons.usb),
+                        label: const Text('Start Streaming'),
+                        style: ElevatedButton.styleFrom(
+                          textStyle: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          backgroundColor: MyColors.green,
+                          foregroundColor: Colors.white,
+                          elevation: 4,
+                          shadowColor: MyColors.green.withOpacity(0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.r),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 30.h),
+
                   Padding(
-                     padding: EdgeInsets.symmetric(horizontal: 50.w),
-                    child: Column(
+                    padding: EdgeInsets.symmetric(horizontal: 60.w),
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const _InstructionRow(
+                            text: "Connect Mobile & PC via USB Cable",
+                          ),
+                          SizedBox(height: 12.h),
+                          const _InstructionRow(
+                            text: "Enable USB Debugging on Phone",
+                          ),
+                          SizedBox(height: 12.h),
+                          const _InstructionRow(
+                            text: "Start Streaming & Connect on PC",
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 15.h),
+
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TroubleshootUsbPage(),
+                        ),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white54,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        _InstructionRow(
-                          text: "Ultra-low latency performance",
-                        ),
-                        SizedBox(height: 12.h),
-                        _InstructionRow(
-                          text: "Lossless upto 4K video transfer",
-                        ),
-                        SizedBox(height: 12.h),
-                        _InstructionRow(
-                          text: "Stable connection & charging",
-                        ),
+                        Icon(Icons.help_outline, size: 16.sp),
+                        SizedBox(width: 8.w),
+                        const Text("Having trouble?"),
                       ],
                     ),
                   ),
-
-                  const Spacer(flex: 3),
-
-                  // // "Notify Me" Button
-                  // SizedBox(
-                  //   width: double.infinity,
-                  //   height: 56.h,
-                  //   child: ElevatedButton(
-                  //     onPressed: () {
-                  //       ScaffoldMessenger.of(context).showSnackBar(
-                  //         SnackBar(
-                  //           content: const Text(
-                  //             "We'll notify you when USB mode connects!",
-                  //           ),
-                  //           backgroundColor: MyColors.grey,
-                  //           behavior: SnackBarBehavior.floating,
-                  //         ),
-                  //       );
-                  //     },
-                  //     style: ElevatedButton.styleFrom(
-                  //       backgroundColor: MyColors.green,
-                  //       foregroundColor: Colors.white,
-                  //       elevation: 0,
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(16.r),
-                  //       ),
-                  //     ),
-                  //     child: Row(
-                  //       mainAxisAlignment: MainAxisAlignment.center,
-                  //       children: [
-                  //         Icon(Icons.notifications_active_rounded, size: 20.sp),
-                  //         SizedBox(width: 10.w),
-                  //         Text(
-                  //           "Notify Me When Ready",
-                  //           style: TextStyle(
-                  //             fontSize: 16.sp,
-                  //             fontWeight: FontWeight.bold,
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ),
-                  // SizedBox(height: 70.h),
                 ],
               ),
             ),
-          ),
         ],
       ),
     );
@@ -188,7 +179,7 @@ class _InstructionRow extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          padding: const EdgeInsets.all(4),
+          padding: EdgeInsets.all(AppSizes.p4 - 1.sp),
           decoration: BoxDecoration(
             color: Colors.white10,
             shape: BoxShape.circle,
@@ -199,7 +190,7 @@ class _InstructionRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(color: Colors.white60, fontSize: 13.sp,),
+            style: TextStyle(color: Colors.white60, fontSize: 13.sp),
           ),
         ),
       ],

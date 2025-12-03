@@ -14,7 +14,7 @@ class BottomBarController extends StatelessWidget {
     // This is your main custom container that replaces BottomNavigationBar
     return Container(
       // Set a height for your bar
-      height: 75.h,
+      height: 75.sp,
       decoration: BoxDecoration(
         // Give it a color, or gradient, etc.
         color: Color(0xff1E1E1E),
@@ -22,7 +22,7 @@ class BottomBarController extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
+            blurRadius: 8.r,
             offset: const Offset(0, -2),
           ),
         ],
@@ -37,7 +37,7 @@ class BottomBarController extends StatelessWidget {
             // Each button is a custom widget
             _buildNavItem(icon: Icons.wifi, label: 'Wi-Fi', index: 0),
             _buildNavItem(icon: Icons.usb, label: 'USB', index: 1),
-            _buildNavItem(icon: Icons.settings, label: 'Settings', index: 2),
+            _buildNavItem(icon: Icons.contact_support_rounded, label: 'More', index: 2),
           ],
         ),
       ),

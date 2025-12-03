@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  camera: ^0.10.6
-  permission_handler: ^12.0.1
+  camera: ^0.11.3
+  permission_handler: ^11.4.0
   wakelock_plus: ^1.4.0
   path_provider: ^2.1.2
   flutter_webrtc: ^1.2.0
@@ -23,13 +23,15 @@ dependencies:
   shared_preferences: ^2.5.3
   flutter_screenutil: ^5.9.3
   flutter_riverpod: ^3.0.3
+  flutter_image_compress: ^2.3.0
+  record: ^6.1.2
   
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
   # This tells the package to generate icons for Android
@@ -39,11 +41,11 @@ flutter_launcher_icons:
   ios: true
 
   # This is the path to your master icon file
-  image_path: "assets/logos/webcamo-without-bg.png" 
+  image_path: "assets/logos/eazycam-without-bg.png" 
 
   # This creates a special version for Android 12+ (adaptive icons)
   adaptive_icon_background: "assets/logos/icon-bg.png" # (Optional) A background color for Android
-  adaptive_icon_foreground: "assets/logos/webcamo-without-bg.png" # (Optional) A background color for Android
+  adaptive_icon_foreground: "assets/logos/eazycam-without-bg.png" # (Optional) A background color for Android
 
 
 flutter:
