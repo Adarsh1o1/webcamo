@@ -488,34 +488,59 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     ),
 
                     SizedBox(height: 20.h),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        // Call exit function
-                        onPressed: _startServer,
-                        icon: const Icon(Icons.refresh_rounded),
-                        label: const Text("Refresh"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: MyColors.green.withOpacity(0.8),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                        ),
+                    Text(
+                      "Server has started on port 23233",
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    // Text(
-                    //   "Server has started on port 23233",
-                    //   style: TextStyle(
-                    //     color: Colors.white54,
-                    //     fontSize: 12.sp,
-                    //     fontWeight: FontWeight.w600,
-                    //   ),
-                    // ),
 
-                    // SizedBox(height: 4.h),
+                    SizedBox(height: 20.h),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton.icon(
+                          // Call exit function
+                          onPressed: _startServer,
+                          icon: const Icon(Icons.refresh_rounded),
+                          label: const Text("Refresh"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MyColors.green.withOpacity(0.8),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              vertical: 12.h,
+                              horizontal: 35.w,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          // Call exit function
+                          onPressed: _handleStopAndExit,
+                          icon: const Icon(Icons.power_off_rounded),
+                          label: const Text("Stop & Exit"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade900.withOpacity(
+                              0.8,
+                            ),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              vertical: 12.h,
+                              horizontal: 26.w,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
                     // SelectableText(
                     //   "23233",
                     //   style: TextStyle(
@@ -558,26 +583,9 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     //     ],
                     //   ),
                     // ),
-                    SizedBox(height: 15.h),
+                    // SizedBox(height: 15.h),
 
                     // 4. STOP Button only
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        // Call exit function
-                        onPressed: _handleStopAndExit,
-                        icon: const Icon(Icons.power_off_rounded),
-                        label: const Text("Stop & Exit"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade900.withOpacity(0.8),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
