@@ -38,7 +38,7 @@ class MyApp extends StatelessWidget {
             systemNavigationBarIconBrightness: Brightness.light,
           ),
           child: MaterialApp(
-            title: 'Webcamo',
+            title: 'Eazycam',
             debugShowCheckedModeBanner: false,
 
             themeMode: ThemeMode.dark,

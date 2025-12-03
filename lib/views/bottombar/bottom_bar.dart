@@ -31,7 +31,7 @@ class _BottomBarState extends ConsumerState<BottomBar> {
 
   // Titles for the AppBar
   static const List<String> _titles = [
-    'Webcamo',
+    'Eazycam',
     'USB Connection',
     'More Info',
   ];

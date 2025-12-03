@@ -41,11 +41,11 @@ flutter_launcher_icons:
   ios: true
 
   # This is the path to your master icon file
-  image_path: "assets/logos/webcamo-without-bg.png" 
+  image_path: "assets/logos/eazycam-without-bg.png" 
 
   # This creates a special version for Android 12+ (adaptive icons)
   adaptive_icon_background: "assets/logos/icon-bg.png" # (Optional) A background color for Android
-  adaptive_icon_foreground: "assets/logos/webcamo-without-bg.png" # (Optional) A background color for Android
+  adaptive_icon_foreground: "assets/logos/eazycam-without-bg.png" # (Optional) A background color for Android
 
 
 flutter:

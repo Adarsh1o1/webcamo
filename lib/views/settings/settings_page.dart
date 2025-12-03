@@ -304,7 +304,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Image.asset(AppStrings.logo, height: AppSizes.icon_md),
                   SizedBox(height: 8.h),
                   Text(
-                    "Webcamo",
+                    "Eazycam",
                     style: TextStyle(
                       color: MyColors.grey.withOpacity(0.5),
                       fontWeight: FontWeight.w600,
@@ -312,7 +312,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   Text(
-                    "Version 1.0.0",
+                    "Version 1.8.12",
                     style: TextStyle(
                       color: MyColors.grey.withOpacity(0.3),
                       fontSize: 12.sp,

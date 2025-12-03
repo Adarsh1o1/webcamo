@@ -17,7 +17,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/gestures.dart';
+// import 'package:flutter/gestures.dart';
 import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
@@ -761,109 +761,109 @@ class _HomePageState extends ConsumerState<HomePage>
     );
   }
 
-  void _showHelpDialog(BuildContext context) {
-    // We get the colors from the theme
-    final ColorScheme colors = Theme.of(context).colorScheme;
+  // void _showHelpDialog(BuildContext context) {
+  //   // We get the colors from the theme
+  //   final ColorScheme colors = Theme.of(context).colorScheme;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'How to Use Webcamo',
-          style: TextStyle(
-            fontSize: AppSizes.font_lg,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 60.w,
-          height: 300.h,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '1. Start the Server',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  '2. Connect on PC',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                // const Text(
-                //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                // ),
-                const Text(
-                  '3. Voila! ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text(
+  //         'How to Use Webcamo',
+  //         style: TextStyle(
+  //           fontSize: AppSizes.font_lg,
+  //           fontWeight: FontWeight.bold,
+  //         ),
+  //       ),
+  //       content: SizedBox(
+  //         width: 60.w,
+  //         height: 300.h,
+  //         child: SingleChildScrollView(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               const Text(
+  //                 '1. Start the Server',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 '2. Connect on PC',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               // const Text(
+  //               //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //               // ),
+  //               const Text(
+  //                 '3. Voila! ',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
 
-                // --- THIS IS THE NEW PART ---
-                RichText(
-                  text: TextSpan(
-                    // Use the default text style from the dialog
-                    style: Theme.of(context).dialogTheme.contentTextStyle,
-                    children: [
-                      TextSpan(
-                        text:
-                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
-                        style: TextStyle(
-                          color: colors
-                              .onSurface, // This will be black in light mode and white in dark mode
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Buying me a Coffee.',
-                        style: TextStyle(
-                          color: colors.primary, // Make it look like a link
-                          decoration: TextDecoration.underline,
-                        ),
-                        // This makes the text tappable
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            // Open the link when tapped
-                            _launchURL(
-                              'https://www.buymeacoffee.com/adarsh1o1',
-                            );
-                          },
-                      ),
-                    ],
-                  ),
-                ),
-                // --- END OF NEW PART ---
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it!',
-              style: TextStyle(
-                fontSize: AppSizes.font_md,
-                fontWeight: FontWeight.bold,
-                color: MyColors.green,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //               // --- THIS IS THE NEW PART ---
+  //               RichText(
+  //                 text: TextSpan(
+  //                   // Use the default text style from the dialog
+  //                   style: Theme.of(context).dialogTheme.contentTextStyle,
+  //                   children: [
+  //                     TextSpan(
+  //                       text:
+  //                           'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+  //                       style: TextStyle(
+  //                         color: colors
+  //                             .onSurface, // This will be black in light mode and white in dark mode
+  //                       ),
+  //                     ),
+  //                     TextSpan(
+  //                       text: 'Buying me a Coffee.',
+  //                       style: TextStyle(
+  //                         color: colors.primary, // Make it look like a link
+  //                         decoration: TextDecoration.underline,
+  //                       ),
+  //                       // This makes the text tappable
+  //                       recognizer: TapGestureRecognizer()
+  //                         ..onTap = () {
+  //                           // Open the link when tapped
+  //                           _launchURL(
+  //                             'https://www.buymeacoffee.com/adarsh1o1',
+  //                           );
+  //                         },
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               // --- END OF NEW PART ---
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //       actions: [
+  //         GestureDetector(
+  //           onTap: () => Navigator.of(context).pop(),
+  //           child: Text(
+  //             'Got it!',
+  //             style: TextStyle(
+  //               fontSize: AppSizes.font_md,
+  //               fontWeight: FontWeight.bold,
+  //               color: MyColors.green,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

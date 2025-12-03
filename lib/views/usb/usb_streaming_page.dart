@@ -219,6 +219,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         }
       } catch (e) {
         debugPrint("Error streaming video frame: $e");
+        _stopStreaming();
+        _initializeCamera();
       }
     });
   }
