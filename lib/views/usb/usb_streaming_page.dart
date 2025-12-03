@@ -145,8 +145,6 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
             });
           }
         });
-
-
       });
 
       _startImageStream();
@@ -465,28 +463,19 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                         vertical: 6.h,
                       ),
                       decoration: BoxDecoration(
-                        color: _isConnected
-                            ? successColor.withOpacity(0.2)
-                            : errorColor.withOpacity(0.2),
+                        color: successColor.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(30.r),
-                        border: Border.all(
-                          color: _isConnected ? successColor : errorColor,
-                          width: 1,
-                        ),
+                        border: Border.all(color: successColor, width: 1),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            _isConnected ? Icons.link : Icons.link_off,
-                            size: 16.sp,
-                            color: _isConnected ? successColor : errorColor,
-                          ),
+                          Icon(Icons.link, size: 16.sp, color: successColor),
                           SizedBox(width: 8.w),
                           Text(
-                            _isConnected ? "CONNECTED" : "WAITING FOR PC...",
+                            "Server running...",
                             style: TextStyle(
-                              color: _isConnected ? successColor : errorColor,
+                              color: successColor,
                               fontWeight: FontWeight.bold,
                               fontSize: 12.sp,
                               letterSpacing: 1.1,
@@ -605,47 +594,48 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(23.r),
-                      child:
-                      !_isPaused ? 
-                      _cameraController != null &&
-                              _cameraController!.value.isInitialized
-                          ? FittedBox(
-                              fit: BoxFit.cover,
-                              child: SizedBox(
-                                width: _cameraController!
-                                    .value
-                                    .previewSize!
-                                    .height,
-                                height:
-                                    _cameraController!.value.previewSize!.width,
-                                child: CameraPreview(_cameraController!),
-                              ),
-                            )
-                          : const Center(child: CircularProgressIndicator())
-                          :
-                           Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.pause_circle_filled,
-                                      size: 48.sp,
-                                      color: Colors.white70,
+                      child: !_isPaused
+                          ? _cameraController != null &&
+                                    _cameraController!.value.isInitialized
+                                ? FittedBox(
+                                    fit: BoxFit.cover,
+                                    child: SizedBox(
+                                      width: _cameraController!
+                                          .value
+                                          .previewSize!
+                                          .height,
+                                      height: _cameraController!
+                                          .value
+                                          .previewSize!
+                                          .width,
+                                      child: CameraPreview(_cameraController!),
                                     ),
-                                    SizedBox(height: 8.h),
-                                    Text(
-                                      "PREVIEW PAUSED",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16.sp,
-                                        letterSpacing: 1.2,
-                                      ),
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                          : Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.pause_circle_filled,
+                                    size: 48.sp,
+                                    color: Colors.white70,
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    "PREVIEW PAUSED",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16.sp,
+                                      letterSpacing: 1.2,
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
-                          
+                            ),
                     ),
                   ),
                 ),
