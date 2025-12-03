@@ -488,14 +488,32 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     ),
 
                     SizedBox(height: 20.h),
-                    Text(
-                      "Server has started on port 23233",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w600,
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        // Call exit function
+                        onPressed: _startServer,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text("Refresh"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: MyColors.green.withOpacity(0.8),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                        ),
                       ),
                     ),
+                    // Text(
+                    //   "Server has started on port 23233",
+                    //   style: TextStyle(
+                    //     color: Colors.white54,
+                    //     fontSize: 12.sp,
+                    //     fontWeight: FontWeight.w600,
+                    //   ),
+                    // ),
 
                     // SizedBox(height: 4.h),
                     // SelectableText(
@@ -540,7 +558,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     //     ],
                     //   ),
                     // ),
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 15.h),
 
                     // 4. STOP Button only
                     SizedBox(

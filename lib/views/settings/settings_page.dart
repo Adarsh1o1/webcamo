@@ -53,7 +53,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          'How to Use Webcamo',
+          'How to Use Eazycam',
           style: TextStyle(
             fontSize: AppSizes.font_lg,
             fontWeight: FontWeight.bold,
@@ -80,7 +80,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const Text(
-                  'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+                  'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
                   style: TextStyle(color: MyColors.grey),
                 ),
                 const Text(
@@ -88,7 +88,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 // const Text(
-                //   'On your PC, open the Webcamo Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+                //   'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
                 // ),
                 const Text(
                   '3. Voila! ',
@@ -103,7 +103,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     children: [
                       TextSpan(
                         text:
-                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Webcamo! If you find it useful, consider supporting me by ',
+                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Eazycam! If you find it useful, consider supporting me by ',
                         style: TextStyle(
                           color: colors
                               .onSurface, // This will be black in light mode and white in dark mode
@@ -167,7 +167,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: [
                 _ActionTile(
                   icon: Icons.privacy_tip_outlined,
-                  title: 'How to use Webcamo',
+                  title: 'How to use Eazycam',
                   value: '',
                   textColor: _textPrimary,
                   onTap: () => _showHelpDialog(context),
