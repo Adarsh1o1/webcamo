@@ -49,5 +49,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs local network access to connect with the PC client.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs location access to get the current Wi-Fi IP address.</string>
 </dict>
 </plist>

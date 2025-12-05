@@ -500,7 +500,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                     SizedBox(height: 20.h),
 
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton.icon(
                           // Call exit function
@@ -512,13 +512,14 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
                               vertical: 12.h,
-                              horizontal: 35.w,
+                              horizontal: 32.w,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
                             ),
                           ),
                         ),
+                        SizedBox(width: 10.w),
                         ElevatedButton.icon(
                           // Call exit function
                           onPressed: _handleStopAndExit,
@@ -531,7 +532,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
                               vertical: 12.h,
-                              horizontal: 26.w,
+                              horizontal: 23.w,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
