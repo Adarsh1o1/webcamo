@@ -22,15 +22,10 @@
         android:label="webcamo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
-          <service
-          android:name="com.example.webcamo.CameraStreamService"
-          android:exported="false"
-          android:foregroundServiceType="camera|microphone" />
-
-
-
-
+        <service
+        android:name="com.example.webcamo.CameraStreamService"
+        android:exported="false"
+        android:foregroundServiceType="camera|microphone" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -68,6 +63,18 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
         </intent>
     </queries>
 </manifest>

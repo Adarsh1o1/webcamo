@@ -1,10 +1,10 @@
 // lib/views/settings/settings_page.dart
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/constants.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/strings.dart';
 import 'package:webcamo/utils/url_launcher.dart';
@@ -45,109 +45,109 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   //   );
   // }
 
-  void _showHelpDialog(BuildContext context) {
-    // We get the colors from the theme
-    final ColorScheme colors = Theme.of(context).colorScheme;
+  // void _showHelpDialog(BuildContext context) {
+  //   // We get the colors from the theme
+  //   final ColorScheme colors = Theme.of(context).colorScheme;
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'How to Use Eazycam',
-          style: TextStyle(
-            fontSize: AppSizes.font_lg,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: SizedBox(
-          width: 60.w,
-          height: 300.h,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  '1. Start the Server',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  '2. Connect on PC',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                  style: TextStyle(color: MyColors.grey),
-                ),
-                const Text(
-                  'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                // const Text(
-                //   'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
-                // ),
-                const Text(
-                  '3. Voila! ',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text(
+  //         'How to Use Eazycam',
+  //         style: TextStyle(
+  //           fontSize: AppSizes.font_lg,
+  //           fontWeight: FontWeight.bold,
+  //         ),
+  //       ),
+  //       content: SizedBox(
+  //         width: 60.w,
+  //         height: 300.h,
+  //         child: SingleChildScrollView(
+  //           child: Column(
+  //             crossAxisAlignment: CrossAxisAlignment.start,
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               const Text(
+  //                 '1. Start the Server',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'Tap on Start Server to start the server. Wait until the app shows the WiFi IP.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 '2. Connect on PC',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               const Text(
+  //                 'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //                 style: TextStyle(color: MyColors.grey),
+  //               ),
+  //               const Text(
+  //                 'Note: Phone and PC must be on the same Local Wi-Fi network only.\n',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
+  //               // const Text(
+  //               //   'On your PC, open the Eazycam Desktop Application. Enter the WiFi IP displayed on your phone and click connect.\n',
+  //               // ),
+  //               const Text(
+  //                 '3. Voila! ',
+  //                 style: TextStyle(fontWeight: FontWeight.bold),
+  //               ),
 
-                // --- THIS IS THE NEW PART ---
-                RichText(
-                  text: TextSpan(
-                    // Use the default text style from the dialog
-                    style: Theme.of(context).dialogTheme.contentTextStyle,
-                    children: [
-                      TextSpan(
-                        text:
-                            'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Eazycam! If you find it useful, consider supporting me by ',
-                        style: TextStyle(
-                          color: colors
-                              .onSurface, // This will be black in light mode and white in dark mode
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Support us!',
-                        style: TextStyle(
-                          color: colors.primary, // Make it look like a link
-                          decoration: TextDecoration.underline,
-                        ),
-                        // This makes the text tappable
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            // Open the link when tapped
-                            UrlLauncherUtil.launchInAppView(
-                              'https://www.buymeacoffee.com/adarsh1o1',
-                            );
-                          },
-                      ),
-                    ],
-                  ),
-                ),
-                // --- END OF NEW PART ---
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Text(
-              'Got it!',
-              style: TextStyle(
-                fontSize: AppSizes.font_md,
-                fontWeight: FontWeight.bold,
-                color: MyColors.green,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //               // --- THIS IS THE NEW PART ---
+  //               RichText(
+  //                 text: TextSpan(
+  //                   // Use the default text style from the dialog
+  //                   style: Theme.of(context).dialogTheme.contentTextStyle,
+  //                   children: [
+  //                     TextSpan(
+  //                       text:
+  //                           'Open any app (Zoom, OBS, Discord, Google, Meet, etc.). Thank you for using Eazycam! If you find it useful, consider supporting me by ',
+  //                       style: TextStyle(
+  //                         color: colors
+  //                             .onSurface, // This will be black in light mode and white in dark mode
+  //                       ),
+  //                     ),
+  //                     TextSpan(
+  //                       text: 'Support us!',
+  //                       style: TextStyle(
+  //                         color: colors.primary, // Make it look like a link
+  //                         decoration: TextDecoration.underline,
+  //                       ),
+  //                       // This makes the text tappable
+  //                       recognizer: TapGestureRecognizer()
+  //                         ..onTap = () {
+  //                           // Open the link when tapped
+  //                           UrlLauncherUtil.launchInAppView(
+  //                             'https://www.buymeacoffee.com/adarsh1o1',
+  //                           );
+  //                         },
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               // --- END OF NEW PART ---
+  //             ],
+  //           ),
+  //         ),
+  //       ),
+  //       actions: [
+  //         GestureDetector(
+  //           onTap: () => Navigator.of(context).pop(),
+  //           child: Text(
+  //             'Got it!',
+  //             style: TextStyle(
+  //               fontSize: AppSizes.font_md,
+  //               fontWeight: FontWeight.bold,
+  //               color: MyColors.green,
+  //             ),
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -167,10 +167,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: [
                 _ActionTile(
                   icon: Icons.privacy_tip_outlined,
-                  title: 'How to use Eazycam',
+                  title: 'How to Setup',
                   value: '',
                   textColor: _textPrimary,
-                  onTap: () => _showHelpDialog(context),
+                  onTap: () => UrlLauncherUtil.launchInAppView(
+                    AppConstants.HOW_TO_SETUP,
+                  ),
+                ),
+                _CustomDivider(color: _darkBackground),
+                _ActionTile(
+                  icon: Icons.help_outline_rounded,
+                  title: 'FAQs',
+                  value: '',
+                  textColor: _textPrimary,
+                  onTap: () =>
+                      UrlLauncherUtil.launchInAppView(AppConstants.FAQ),
                 ),
               ],
             ),
@@ -268,28 +279,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _SettingsGroup(
               backgroundColor: _darkSurface,
               children: [
-                _ActionTile(
-                  icon: Icons.help_outline_rounded,
-                  title: 'FAQs',
-                  value: '',
-                  textColor: _textPrimary,
-                  onTap: () => UrlLauncherUtil.launchInAppView("FAQs Page"),
-                ),
                 _CustomDivider(color: _darkBackground),
                 _ActionTile(
                   icon: Icons.privacy_tip_outlined,
                   title: 'Privacy Policy',
                   value: '',
                   textColor: _textPrimary,
-                  onTap: () => UrlLauncherUtil.launchInAppView("Privacy Policy"),
+                  onTap: () => UrlLauncherUtil.launchInAppView(
+                    AppConstants.PRIVACY_POLICY,
+                  ),
                 ),
                 _CustomDivider(color: _darkBackground),
                 _ActionTile(
                   icon: Icons.info_outline_rounded,
-                  title: 'About Us',
+                  title: 'Terms of Service',
                   value: '',
                   textColor: _textPrimary,
-                  onTap: () => UrlLauncherUtil.launchInAppView("About Page"),
+                  onTap: () =>
+                      UrlLauncherUtil.launchInAppView(AppConstants.TERMS),
+                ),
+                _CustomDivider(color: _darkBackground),
+                _ActionTile(
+                  icon: Icons.info_outline_rounded,
+                  title: 'Contact Us',
+                  value: '',
+                  textColor: _textPrimary,
+                  onTap: () =>
+                      UrlLauncherUtil.launchInAppView(AppConstants.CONTACT),
                 ),
               ],
             ),
@@ -312,7 +328,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   Text(
-                    "Version 1.8.12",
+                    "Version 0.1.0",
                     style: TextStyle(
                       color: MyColors.grey.withOpacity(0.3),
                       fontSize: 12.sp,
@@ -390,7 +406,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   //     },
   //   );
   // }
-
 }
 
 // --- CUSTOM WIDGETS ---

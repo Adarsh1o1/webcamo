@@ -14,7 +14,7 @@ class BottomBarController extends StatelessWidget {
     // This is your main custom container that replaces BottomNavigationBar
     return Container(
       // Set a height for your bar
-      height: 75.sp,
+      height: 90.sp,
       decoration: BoxDecoration(
         // Give it a color, or gradient, etc.
         color: Color(0xff1E1E1E),
@@ -30,15 +30,22 @@ class BottomBarController extends StatelessWidget {
       // SafeArea ensures your bar doesn't get hidden by phone UI
       child: SafeArea(
         top: false, // We only care about the bottom edge
-        child: Row(
-          // This row holds your three custom buttons
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // Each button is a custom widget
-            _buildNavItem(icon: Icons.wifi, label: 'Wi-Fi', index: 0),
-            _buildNavItem(icon: Icons.usb, label: 'USB', index: 1),
-            _buildNavItem(icon: Icons.contact_support_rounded, label: 'More', index: 2),
-          ],
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSizes.p8),
+          child: Row(
+            // This row holds your three custom buttons
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // Each button is a custom widget
+              _buildNavItem(icon: Icons.wifi, label: 'Wi-Fi', index: 0),
+              _buildNavItem(icon: Icons.usb, label: 'USB', index: 1),
+              _buildNavItem(
+                icon: Icons.contact_support_rounded,
+                label: 'More',
+                index: 2,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -69,42 +76,45 @@ class BottomBarController extends StatelessWidget {
         onTap: () => onTap?.call(index),
         // Make the ripple effect clean
         borderRadius: BorderRadius.circular(12.r),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min, // Keep column height compact
-          children: [
-            // This is your custom container from your original code
-            Container(
-              decoration: BoxDecoration(
-                // ONLY show the green background if this item is active
-                color: isActive ? activeColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(20.r),
-              ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  // Use more padding when active to create the "pill" effect
-                  horizontal: isActive ? AppSizes.p16 : AppSizes.p8,
-                  vertical: AppSizes.p4,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Keep column height compact
+            children: [
+              // This is your custom container from your original code
+              Container(
+                decoration: BoxDecoration(
+                  // ONLY show the green background if this item is active
+                  color: isActive ? activeColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20.r),
                 ),
-                // Use the correct icon color based on active state
-                child: Icon(
-                  icon,
-                  color: isActive ? iconActiveColor : iconInactiveColor,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    // Use more padding when active to create the "pill" effect
+                    horizontal: isActive ? AppSizes.p16 : AppSizes.p8,
+                    vertical: AppSizes.p4,
+                  ),
+                  // Use the correct icon color based on active state
+                  child: Icon(
+                    icon,
+                    color: isActive ? iconActiveColor : iconInactiveColor,
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 4.h), // Space between icon and label
-            // Label
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12.sp,
-                // Use the active or inactive color for the text
-                color:  inactiveColor,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              SizedBox(height: 4.h), // Space between icon and label
+              // Label
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  // Use the active or inactive color for the text
+                  color: inactiveColor,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
