@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/views/splash_screen.dart';
 import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  // SystemChrome.setSystemUIOverlayStyle(
-  //   const SystemUiOverlayStyle(
-  //     systemNavigationBarColor: MyColors.backgund,
-  //     systemNavigationBarDividerColor: MyColors.backgund,
-  //     statusBarColor: MyColors.backgund,
-  //     statusBarIconBrightness: Brightness.dark,
-  //     systemNavigationBarIconBrightness: Brightness.dark,
-  //   ),
-  // );
+  MobileAds.instance.initialize();
   runApp(const ProviderScope(child: MyApp()));
 }
 

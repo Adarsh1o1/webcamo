@@ -5,6 +5,8 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:webcamo/providers/ads_provider.dart';
 import 'package:webcamo/providers/usb_provider.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
@@ -39,6 +41,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
+    ref.read(adsProvider).initializeusbBanner();
     // _isPaused = true;
   }
 
@@ -433,6 +436,9 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
   @override
   Widget build(BuildContext context) {
+
+    final adsState = ref.watch(adsProvider);
+
     final Color successColor = Theme.of(context).brightness == Brightness.dark
         ? Colors.greenAccent[400]!
         : Colors.green.shade600;
@@ -592,7 +598,17 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
               ),
             ),
 
-            SizedBox(height: 24.h),
+            SizedBox(height: 12.h),
+            
+            if (adsState.isUsbBannerLoaded)
+            SizedBox(
+              height: adsState.usb_banner.size.height.toDouble(),
+              width: adsState.usb_banner.size.width.toDouble(),
+              child: AdWidget(ad: adsState.usb_banner),
+            ),
+            
+            SizedBox(height: 12.h),
+
             Text(
               "LIVE PREVIEW",
               style: TextStyle(
