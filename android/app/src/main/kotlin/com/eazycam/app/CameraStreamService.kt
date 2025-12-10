@@ -1,4 +1,4 @@
-package com.example.webcamo
+package com.eazycam.app
 
 import android.app.Notification
 import android.app.NotificationChannel

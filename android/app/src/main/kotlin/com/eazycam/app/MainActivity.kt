@@ -1,4 +1,4 @@
-package com.example.webcamo
+package com.eazycam.app
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

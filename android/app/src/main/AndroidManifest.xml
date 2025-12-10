@@ -23,7 +23,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service
-        android:name="com.example.webcamo.CameraStreamService"
+        android:name="com.eazycam.app.CameraStreamService"
         android:exported="false"
         android:foregroundServiceType="camera|microphone" />
         <activity
