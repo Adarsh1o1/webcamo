@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:webcamo/services/notification_service.dart' hide localStorageProvider;
+import 'package:webcamo/services/notification_service.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/local_storage.dart';
 import 'package:webcamo/utils/logger.dart';
@@ -29,17 +29,26 @@ void main() async {
     Logger.log('Firebase initialization failed: $e', error: true);
   }
 
+  debugPrint('Initializing LocalStorage...');
   final localStorage = await LocalStorage.init();
-
-  final container = ProviderContainer(
-    overrides: [
-      localStorageProvider.overrideWithValue(localStorage),
-    ],
+  debugPrint(
+    'LocalStorage initialized. Initializing NotificationService...',
   );
 
-  await container.read(notificationServiceProvider).init();
+  // 2. Initialize NotificationService manually with dependency injection
+  final notificationService = NotificationService(localStorage);
+  await notificationService.init();
+
   MobileAds.instance.initialize();
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        localStorageProvider.overrideWithValue(localStorage),
+        notificationServiceProvider.overrideWithValue(notificationService),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

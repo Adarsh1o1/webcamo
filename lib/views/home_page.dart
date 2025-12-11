@@ -21,8 +21,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webcamo/providers/ads_provider.dart';
 // import 'package:flutter/gestures.dart';
 import 'package:webcamo/providers/server_provider.dart';
+import 'package:webcamo/services/firebase_analytics_service.dart';
+import 'package:webcamo/services/notification_service.dart';
 import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/logger.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/timer_service.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 
 const String clientHtml = """
@@ -184,6 +188,10 @@ class _HomePageState extends ConsumerState<HomePage>
   List<MediaDeviceInfo> _cameras = [];
   MediaDeviceInfo? _selectedCamera;
 
+  final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
+
+  final TimerService _timerService = TimerService();
+
   @override
   void initState() {
     super.initState();
@@ -315,8 +323,16 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Future<void> _checkPermissions() async {
+    // requesting permissions sequentially to avoid race conditions with system dialogs
     var cameraStatus = await Permission.camera.request();
     var micStatus = await Permission.microphone.request();
+
+    // Notification permission request (User requested to fix "not asked" issue)
+    // We await this to ensure it doesn't conflict or happen in parallel if underlying system limits it
+    await ref
+        .read(notificationServiceProvider)
+        .requestNotificationPermissions();
+
     _sharedPreferences = await SharedPreferences.getInstance();
     if (cameraStatus.isGranted && micStatus.isGranted) {
       if (mounted) {
@@ -548,6 +564,10 @@ class _HomePageState extends ConsumerState<HomePage>
     }
     await _initializeLocalPreview();
 
+    _analyticsService.logEvent(name: "wireless_server_started");
+
+    _timerService.startTimer();
+
     final ip = await NetworkInfo().getWifiIP();
     String? displayIp = ip;
 
@@ -687,6 +707,14 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _fullCleanup() async {
     await _stopStream(); // Stop the P2P connection
     // await _pauseStream();
+    double durationInMinutes = _timerService.stopTimer();
+
+    _analyticsService.logEvent(
+      name: "wireless_server_stopped",
+      parameters: {"duration_minutes": durationInMinutes},
+    );
+
+    Logger.log("Wireless server ran for $durationInMinutes minutes.");
 
     // Stop the local camera stream
     _localStream?.getTracks().forEach((track) {
@@ -1290,7 +1318,7 @@ class _HomePageState extends ConsumerState<HomePage>
                         width: adsState.wireless_banner.size.width.toDouble(),
                         child: AdWidget(ad: adsState.wireless_banner),
                       ),
-                      
+
                     SizedBox(height: 12.h),
 
                     // 2. Camera Preview & Controls Section

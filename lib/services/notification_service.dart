@@ -4,37 +4,33 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webcamo/main.dart';
+import 'package:webcamo/utils/local_storage.dart';
+import 'package:webcamo/utils/logger.dart';
 
 // --- Providers ---
 
-// Placeholder for your LocalStorage provider
-final localStorageProvider = Provider<LocalStorageInterface>((ref) {
-  throw UnimplementedError('Override this provider in main.dart');
-});
-
 // The main Notification Service Provider
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService(ref);
+  return NotificationService(ref.read(localStorageProvider));
 });
-
 
 // --- Service Implementation ---
 
 class NotificationService {
-  final Ref ref;
-  
-  NotificationService(this.ref);
+  final LocalStorage _storage; // Check dependency injection
+
+  NotificationService(this._storage);
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
   static const String broadcastTopic = 'broadcast';
-  static const String _permissionRequestedKey = 'notification_permission_requested';
-  static const String _topicSubscribedKey = 'notification_topic_subscribed';
 
   // --- Initialization ---
 
   Future<void> init() async {
+    Logger.log('NotificationService.init() started');
     try {
       await _initLocalNotifications();
 
@@ -48,82 +44,98 @@ class NotificationService {
         _handleInteraction(initialMessage);
       }
 
-      // Token Refresh
+      // Check current permission status and refresh token if already authorized
+      NotificationSettings settings = await _messaging
+          .getNotificationSettings();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        debugPrint('App start: Permission authorized, checking token...');
+        await _checkAndRefreshFCMToken();
+      }
+
+      // Token Refresh (still useful if valid)
       _messaging.onTokenRefresh.listen((String token) async {
-        debugPrint('FCM Token refreshed: $token');
+        Logger.log('FCM Token refreshed: $token');
         await _subscribeToTopic(token);
       });
 
       debugPrint('NotificationService initialized');
     } catch (e) {
-      debugPrint('NotificationService init error: $e');
+      Logger.log('NotificationService init error: $e', error: true);
     }
   }
 
   // --- Storage Helpers ---
-  
-  // Helper to access storage via ref
-  LocalStorageInterface get _storage => ref.read(localStorageProvider);
+  // Storage is now injected directly
 
-  bool hasRequestedPermission() {
-    return _storage.read<bool>(_permissionRequestedKey) ?? false;
-  }
-
-  bool hasSubscribedToTopic() {
-    return _storage.read<bool>(_topicSubscribedKey) ?? false;
-  }
+  // We rely on SDK for permission status, but we keep track of subscription locally if needed.
+  // We can remove manual 'notification_permission_requested' flag as it might block re-requests if user changes mind in settings.
 
   // --- Permissions & Setup ---
 
   Future<bool> requestNotificationPermissions() async {
     try {
-      bool alreadyRequested = hasRequestedPermission();
-      bool alreadySubscribed = hasSubscribedToTopic();
-
-      if (alreadyRequested && alreadySubscribed) {
-        debugPrint('Permission granted and already subscribed, skipping');
-        return true;
-      }
-
-      // Logic for retry or first time request
-      NotificationSettings settings;
-      
-      if (alreadyRequested && !alreadySubscribed) {
-        debugPrint('Permission requested but subscription failed, retrying...');
-        settings = await _messaging.requestPermission(
-          alert: true, badge: true, sound: true, provisional: false,
-        );
-      } else {
-        debugPrint('First time permission request');
-        settings = await _messaging.requestPermission(
-          alert: true, badge: true, sound: true, provisional: false,
-        );
-        _storage.write(_permissionRequestedKey, true);
-      }
+      NotificationSettings settings = await _messaging
+          .getNotificationSettings();
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('Notification permission granted/authorized');
-        bool subscriptionSuccess = await _getAndSubscribeToken();
-
-        if (subscriptionSuccess) {
-          _storage.write(_topicSubscribedKey, true);
-          return true;
+        debugPrint(
+          'Permission already granted (skipping token fetch on Home Page)',
+        );
+        // User requested NOT to fetch token each time on homepage.
+        // We assume init() handled the app-start check.
+        return true;
+      } else if (settings.authorizationStatus ==
+          AuthorizationStatus.notDetermined) {
+        debugPrint('Requesting permission...');
+        NotificationSettings newSettings = await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        if (newSettings.authorizationStatus == AuthorizationStatus.authorized) {
+          debugPrint('Permission granted');
+          return await _checkAndRefreshFCMToken();
+        } else if (newSettings.authorizationStatus ==
+            AuthorizationStatus.provisional) {
+          debugPrint('Provisional permission granted');
+          return await _checkAndRefreshFCMToken();
+        } else {
+          Logger.log('Notification permission denied by user', error: true);
+          return false;
         }
-        return false;
       } else {
-        debugPrint('Notification permission denied');
+        // Denied or Provisional (already set)
+
+        // If it was denied, we might want to ask again or open settings?
+        // For now, let's try to request again, sometimes it works if not permanently denied on Android
+        // On iOS, if denied, it won't show prompt again.
+
+        NotificationSettings newSettings = await _messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+
+        if (newSettings.authorizationStatus == AuthorizationStatus.authorized ||
+            newSettings.authorizationStatus ==
+                AuthorizationStatus.provisional) {
+          return await _checkAndRefreshFCMToken();
+        }
+
         return false;
       }
     } catch (e) {
-      debugPrint('Error requesting notification permission: $e');
+      debugPrint('✗ Error requesting notification permission: $e');
       return false;
     }
   }
 
   Future<void> _initLocalNotifications() async {
     const AndroidInitializationSettings androidInit =
-        AndroidInitializationSettings('@mipmap/launcher_icon');
-        
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
     const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -151,31 +163,51 @@ class NotificationService {
       description: 'Used for important notifications',
       importance: Importance.high,
     );
-    
+
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
   }
 
   // --- Token Management ---
 
-  Future<bool> _getAndSubscribeToken() async {
+  /// This function fetches the current FCM token, checks it against the stored one.
+  /// If they match, it does nothing.
+  /// If they don't match, it stores the new one and subscribes to the topic (again).
+  Future<bool> _checkAndRefreshFCMToken() async {
     int retries = 3;
     int delaySeconds = 2;
 
     for (int i = 0; i < retries; i++) {
       try {
-        String? token = await _messaging.getToken();
-        if (token != null) {
-          debugPrint('FCM Token obtained: $token');
-          await _subscribeToTopic(token);
-          _storage.write('FcmToken', token);
-          return true;
+        debugPrint('Checking FCM token (attempt ${i + 1}/$retries)...');
+        String? newToken = await _messaging.getToken();
+
+        if (newToken != null) {
+          String? storedToken = _storage.read<String>('FcmToken');
+
+          if (storedToken == newToken) {
+            Logger.log('Token matched. No need to update.');
+            // Ensure we are subscribed? We could force subscribe just in case, or assume 'token matched' == 'subscribed logic done'
+            // If the user clears data but token remains same (unlikely), we might miss subscription.
+            // But let's assume if token is same, we are good.
+            // Actually, to be safe, let's check one more flag or just re-subscribe if we really want to be sure.
+            // Requirement: "if not then replace the new fetched token and move to the next step"
+            // Implies if match -> done.
+            return true;
+          } else {
+            Logger.log('Token changed or not found. Updating...');
+            _storage.write('FcmToken', newToken);
+            await _subscribeToTopic(newToken);
+            return true;
+          }
         } else {
           debugPrint('FCM Token is null');
         }
       } catch (e) {
-        debugPrint('Error getting FCM token (attempt ${i + 1}): $e');
+        Logger.log('Error getting FCM token (attempt ${i + 1}): $e');
       }
 
       if (i < retries - 1) {
@@ -183,16 +215,20 @@ class NotificationService {
         delaySeconds *= 2;
       }
     }
-    debugPrint('Failed to get FCM token after $retries attempts');
+    Logger.log('Failed to get FCM token after $retries attempts', error: true);
     return false;
   }
 
   Future<void> _subscribeToTopic(String token) async {
     try {
+      debugPrint(
+        'Sending subscription request to Firebase for topic "$broadcastTopic"...',
+      );
       await _messaging.subscribeToTopic(broadcastTopic);
-      debugPrint('Subscribed to topic: $broadcastTopic');
+      Logger.log('Successfully subscribed to topic: $broadcastTopic');
     } catch (e) {
       debugPrint('Error subscribing to topic: $e');
+      // We don't rethrow here to allow the app to continue, but we log it.
     }
   }
 
@@ -212,21 +248,22 @@ class NotificationService {
   }
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'High Importance Notifications',
-      channelDescription: 'Important notifications',
-      importance: Importance.high,
-      priority: Priority.high,
-      icon: '@mipmap/launcher_icon',
-    );
-    
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'high_importance_channel',
+          'High Importance Notifications',
+          channelDescription: 'Important notifications',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        );
+
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
     );
-    
+
     const NotificationDetails details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
@@ -255,7 +292,7 @@ class NotificationService {
   void _navigateToRoute(String route) {
     // Access the Navigator State via the global key
     final currentState = navigatorKey.currentState;
-    
+
     if (currentState == null) {
       debugPrint('Navigator state is null, cannot navigate');
       return;
@@ -263,7 +300,7 @@ class NotificationService {
 
     // You might need a way to check current route here using ModalRoute or custom logic
     // For now, we simply push named
-    
+
     switch (route) {
       case '/splash':
         currentState.pushNamed('/splash');
@@ -278,10 +315,4 @@ class NotificationService {
         debugPrint('Unknown route: $route');
     }
   }
-}
-
-// --- Mock Interface for Local Storage (Replace with your actual class) ---
-abstract class LocalStorageInterface {
-  T? read<T>(String key);
-  void write(String key, dynamic value);
 }

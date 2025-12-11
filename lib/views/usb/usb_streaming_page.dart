@@ -8,8 +8,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:webcamo/providers/ads_provider.dart';
 import 'package:webcamo/providers/usb_provider.dart';
+import 'package:webcamo/services/firebase_analytics_service.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/timer_service.dart';
 
 class UsbStreamingPage extends ConsumerStatefulWidget {
   // 1. Add callback to handle closing the widget
@@ -35,6 +37,11 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   bool _isPaused = false;
 
   static const int _packetTypeVideo = 0;
+
+
+  final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
+
+  final TimerService _timerService = TimerService();
 
   @override
   void initState() {
@@ -116,6 +123,10 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         setState(() {
           _isStreaming = true;
         });
+
+        _analyticsService.logEvent(name: "usb_server_started");
+
+        _timerService.startTimer();
         // Update provider
         ref.read(usbProvider.notifier).setStreaming(true);
       }
@@ -262,6 +273,15 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         _isStreaming = false;
         _isConnected = false; // <-- NEW: Reset connection status
       });
+
+      double durationInMinutes = _timerService.stopTimer();
+
+      _analyticsService.logEvent(
+        name: "wireless_server_stopped",
+        parameters: {
+          "duration_minutes": durationInMinutes,
+        },
+      );
       // Update provider
       ref.read(usbProvider.notifier).setStreaming(false);
     } else {
