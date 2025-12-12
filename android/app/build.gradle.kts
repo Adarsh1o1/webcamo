@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -6,7 +9,11 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-
+val keyProperties = Properties()
+val keyPropertiesFile = rootProject.file("key.properties")
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(FileInputStream(keyPropertiesFile))
+}
 
 android {
     namespace = "com.eazycam.app"
@@ -36,11 +43,31 @@ android {
         versionName = flutter.versionName
     }
 
+
+    packagingOptions {
+        resources {
+            pickFirsts.add("lib/arm64-v8a/libc++_shared.so")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keyProperties["keyAlias"] as String? ?: ""
+            keyPassword = keyProperties["keyPassword"] as String? ?: ""
+            storeFile = if (keyProperties["storeFile"] != null) file(keyProperties["storeFile"] as String) else null
+            storePassword = keyProperties["storePassword"] as String? ?: ""
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
@@ -50,7 +77,10 @@ flutter {
 }
 
 dependencies {
-  implementation(platform("com.google.firebase:firebase-bom:34.6.0"))
-  implementation("com.google.firebase:firebase-analytics")
-  coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation(platform("com.google.firebase:firebase-bom:34.4.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("androidx.multidex:multidex:2.0.1")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
 }
