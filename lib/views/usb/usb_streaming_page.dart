@@ -532,8 +532,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                             });
                             await _restartCameraPreview();
                           },
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text("Refresh"),
+                          icon: Icon(Icons.refresh_rounded, size: AppSizes.icon_sm,),
+                          label: Text("Refresh", style: TextStyle(fontSize: AppSizes.font_sm),),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MyColors.green.withOpacity(0.8),
                             foregroundColor: Colors.white,
