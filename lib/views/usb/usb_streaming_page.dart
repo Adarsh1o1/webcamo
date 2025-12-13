@@ -38,7 +38,6 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
   static const int _packetTypeVideo = 0;
 
-
   final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
 
   final TimerService _timerService = TimerService();
@@ -278,9 +277,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
       _analyticsService.logEvent(
         name: "wireless_server_stopped",
-        parameters: {
-          "duration_minutes": durationInMinutes,
-        },
+        parameters: {"duration_minutes": durationInMinutes},
       );
       // Update provider
       ref.read(usbProvider.notifier).setStreaming(false);
@@ -456,7 +453,6 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
   @override
   Widget build(BuildContext context) {
-
     final adsState = ref.watch(adsProvider);
 
     final Color successColor = Theme.of(context).brightness == Brightness.dark
@@ -530,7 +526,12 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                       children: [
                         ElevatedButton.icon(
                           // Call exit function
-                          onPressed: _startServer,
+                          onPressed: () async {
+                            setState(() {
+                              _isPaused = false;
+                            });
+                            await _restartCameraPreview();
+                          },
                           icon: const Icon(Icons.refresh_rounded),
                           label: const Text("Refresh"),
                           style: ElevatedButton.styleFrom(
@@ -619,14 +620,14 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
             ),
 
             SizedBox(height: 12.h),
-            
+
             if (adsState.isUsbBannerLoaded)
-            SizedBox(
-              height: adsState.usb_banner.size.height.toDouble(),
-              width: adsState.usb_banner.size.width.toDouble(),
-              child: AdWidget(ad: adsState.usb_banner),
-            ),
-            
+              SizedBox(
+                height: adsState.usb_banner.size.height.toDouble(),
+                width: adsState.usb_banner.size.width.toDouble(),
+                child: AdWidget(ad: adsState.usb_banner),
+              ),
+
             SizedBox(height: 12.h),
 
             Text(
