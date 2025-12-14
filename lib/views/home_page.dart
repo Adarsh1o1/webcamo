@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -17,10 +18,15 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webcamo/providers/ads_provider.dart';
 // import 'package:flutter/gestures.dart';
 import 'package:webcamo/providers/server_provider.dart';
+import 'package:webcamo/services/firebase_analytics_service.dart';
+import 'package:webcamo/services/notification_service.dart';
 import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/logger.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/timer_service.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 
 const String clientHtml = """
@@ -182,6 +188,10 @@ class _HomePageState extends ConsumerState<HomePage>
   List<MediaDeviceInfo> _cameras = [];
   MediaDeviceInfo? _selectedCamera;
 
+  final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
+
+  final TimerService _timerService = TimerService();
+
   @override
   void initState() {
     super.initState();
@@ -190,6 +200,7 @@ class _HomePageState extends ConsumerState<HomePage>
     // NOW safe to start camera
     _localRenderer.initialize();
     _isPaused = true;
+    ref.read(adsProvider).initializeWirelessBanner();
   }
 
   @override
@@ -312,8 +323,16 @@ class _HomePageState extends ConsumerState<HomePage>
   }
 
   Future<void> _checkPermissions() async {
+    // requesting permissions sequentially to avoid race conditions with system dialogs
     var cameraStatus = await Permission.camera.request();
     var micStatus = await Permission.microphone.request();
+
+    // Notification permission request (User requested to fix "not asked" issue)
+    // We await this to ensure it doesn't conflict or happen in parallel if underlying system limits it
+    await ref
+        .read(notificationServiceProvider)
+        .requestNotificationPermissions();
+
     _sharedPreferences = await SharedPreferences.getInstance();
     if (cameraStatus.isGranted && micStatus.isGranted) {
       if (mounted) {
@@ -359,19 +378,24 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _toggleFlash() async {
     if (_localStream == null || _localStream!.getVideoTracks().isEmpty) return;
     if (_isPaused) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Start stream first.',
-          style: TextStyle(color: MyColors.lightColorScheme.primary, fontWeight: FontWeight.bold),
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Start stream first.',
+            style: TextStyle(
+              color: MyColors.lightColorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: MyColors.grey,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        backgroundColor: MyColors.grey,
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      );
       return;
     }
 
@@ -386,33 +410,43 @@ class _HomePageState extends ConsumerState<HomePage>
       });
 
       if (isFrontCamera && _isFlashOn) {
-            ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Flash may not be supported on front camera.',
-          style: TextStyle(color: MyColors.lightColorScheme.primary, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: MyColors.grey,
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Flash may not be supported on front camera.',
+              style: TextStyle(
+                color: MyColors.lightColorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: MyColors.grey,
+            duration: const Duration(seconds: 1),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
       }
     } catch (e) {
       // print("Error toggling flash: $e");
-          ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Flash not avialable.',
-          style: TextStyle(color: MyColors.lightColorScheme.primary, fontWeight: FontWeight.bold),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Flash not avialable.',
+            style: TextStyle(
+              color: MyColors.lightColorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: MyColors.grey,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        backgroundColor: MyColors.grey,
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      );
       setState(() {
         _isFlashOn = false;
       });
@@ -468,18 +502,23 @@ class _HomePageState extends ConsumerState<HomePage>
     if (_cameras.length < 2 || _selectedCamera == null) return;
     if (_isPaused) {
       ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Start stream first.',
-          style: TextStyle(color: MyColors.lightColorScheme.primary, fontWeight: FontWeight.bold),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Start stream first.',
+            style: TextStyle(
+              color: MyColors.lightColorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: MyColors.grey,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        backgroundColor: MyColors.grey,
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+      );
 
       return;
     }
@@ -524,6 +563,10 @@ class _HomePageState extends ConsumerState<HomePage>
       });
     }
     await _initializeLocalPreview();
+
+    _analyticsService.logEvent(name: "wireless_server_started");
+
+    _timerService.startTimer();
 
     final ip = await NetworkInfo().getWifiIP();
     String? displayIp = ip;
@@ -664,6 +707,14 @@ class _HomePageState extends ConsumerState<HomePage>
   Future<void> _fullCleanup() async {
     await _stopStream(); // Stop the P2P connection
     // await _pauseStream();
+    double durationInMinutes = _timerService.stopTimer();
+
+    _analyticsService.logEvent(
+      name: "wireless_server_stopped",
+      parameters: {"duration_minutes": durationInMinutes},
+    );
+
+    Logger.log("Wireless server ran for $durationInMinutes minutes.");
 
     // Stop the local camera stream
     _localStream?.getTracks().forEach((track) {
@@ -867,6 +918,7 @@ class _HomePageState extends ConsumerState<HomePage>
 
   @override
   Widget build(BuildContext context) {
+    final adsState = ref.watch(adsProvider);
     final bool isFrontCamera =
         _selectedCamera?.label.toLowerCase().contains('front') ?? false;
 
@@ -981,12 +1033,12 @@ class _HomePageState extends ConsumerState<HomePage>
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         SizedBox(height: 60.h),
-              
+
                         // Animation
                         const _RippleUSBIcon(),
-              
+
                         SizedBox(height: 20.h),
-              
+
                         // --- NEW: Heading Text ---
                         Text(
                           "Wireless Webcam",
@@ -997,6 +1049,7 @@ class _HomePageState extends ConsumerState<HomePage>
                                 .white, // Assuming dark background based on your code
                           ),
                         ),
+
                         // SizedBox(height: 8.h),
                         // Text(
                         //   "Turn your phone into a high-quality\nPC webcam in seconds.",
@@ -1007,9 +1060,8 @@ class _HomePageState extends ConsumerState<HomePage>
                         //     height: 1.5,
                         //   ),
                         // ),
-              
                         SizedBox(height: 30.h),
-              
+
                         // Start Button
                         Center(
                           child: SizedBox(
@@ -1049,14 +1101,14 @@ class _HomePageState extends ConsumerState<HomePage>
                             ),
                           ),
                         ),
-              
+
                         SizedBox(height: 30.h),
-              
+
                         // --- NEW: Instruction Points ---
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 60.w),
                           child: Align(
-                            alignment:Alignment.center,
+                            alignment: Alignment.center,
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
@@ -1075,16 +1127,15 @@ class _HomePageState extends ConsumerState<HomePage>
                             ),
                           ),
                         ),
-              
+
                         SizedBox(height: 15.h),
-              
+
                         TextButton(
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    const TroubleshootPage(),
+                                builder: (context) => const TroubleshootPage(),
                               ),
                             );
                           },
@@ -1175,30 +1226,29 @@ class _HomePageState extends ConsumerState<HomePage>
 
                             SizedBox(height: 20.h),
 
-                             Row(
-                               mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    "WiFi IP: ",
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 20.sp,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  "WiFi IP: ",
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 20.sp,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  SizedBox(height: 4.h),
-                                  SelectableText(
-                                    _ipAddress,
-                                    style: TextStyle(
-                                      fontSize: 20.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      // letterSpacing: 1.5,
-                                    ),
+                                ),
+                                SizedBox(height: 4.h),
+                                SelectableText(
+                                  _ipAddress,
+                                  style: TextStyle(
+                                    fontSize: 20.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    // letterSpacing: 1.5,
                                   ),
-                                ],
-                              ),
-                          
+                                ),
+                              ],
+                            ),
 
                             SizedBox(height: 10.h),
 
@@ -1260,7 +1310,16 @@ class _HomePageState extends ConsumerState<HomePage>
                       ),
                     ),
 
-                    SizedBox(height: 24.h),
+                    SizedBox(height: 12.h),
+
+                    if (adsState.isWirelessBannerLoaded)
+                      SizedBox(
+                        height: adsState.wireless_banner.size.height.toDouble(),
+                        width: adsState.wireless_banner.size.width.toDouble(),
+                        child: AdWidget(ad: adsState.wireless_banner),
+                      ),
+
+                    SizedBox(height: 12.h),
 
                     // 2. Camera Preview & Controls Section
                     Text(
@@ -1580,7 +1639,6 @@ class _RippleUSBIconState extends State<_RippleUSBIcon>
     );
   }
 }
-
 
 class _InstructionRow extends StatelessWidget {
   final String text;

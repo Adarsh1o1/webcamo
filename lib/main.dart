@@ -1,22 +1,54 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:webcamo/services/notification_service.dart';
 import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/local_storage.dart';
+import 'package:webcamo/utils/logger.dart';
 import 'package:webcamo/views/splash_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  Logger.log('Background message: ${message.messageId}');
+}
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // SystemChrome.setSystemUIOverlayStyle(
-  //   const SystemUiOverlayStyle(
-  //     systemNavigationBarColor: MyColors.backgund,
-  //     systemNavigationBarDividerColor: MyColors.backgund,
-  //     statusBarColor: MyColors.backgund,
-  //     statusBarIconBrightness: Brightness.dark,
-  //     systemNavigationBarIconBrightness: Brightness.dark,
-  //   ),
-  // );
-  runApp(const ProviderScope(child: MyApp()));
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    Logger.log('Firebase initialized successfully');
+  } catch (e) {
+    Logger.log('Firebase initialization failed: $e', error: true);
+  }
+
+  debugPrint('Initializing LocalStorage...');
+  final localStorage = await LocalStorage.init();
+  debugPrint(
+    'LocalStorage initialized. Initializing NotificationService...',
+  );
+
+  // 2. Initialize NotificationService manually with dependency injection
+  final notificationService = NotificationService(localStorage);
+  await notificationService.init();
+
+  MobileAds.instance.initialize();
+  runApp(
+    ProviderScope(
+      overrides: [
+        localStorageProvider.overrideWithValue(localStorage),
+        notificationServiceProvider.overrideWithValue(notificationService),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -40,6 +72,7 @@ class MyApp extends StatelessWidget {
           child: MaterialApp(
             title: 'Eazycam',
             debugShowCheckedModeBanner: false,
+            navigatorKey: navigatorKey,
 
             themeMode: ThemeMode.dark,
             theme: ThemeData(

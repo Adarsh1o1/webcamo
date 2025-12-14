@@ -5,9 +5,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:webcamo/providers/ads_provider.dart';
 import 'package:webcamo/providers/usb_provider.dart';
+import 'package:webcamo/services/firebase_analytics_service.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
+import 'package:webcamo/utils/timer_service.dart';
 
 class UsbStreamingPage extends ConsumerStatefulWidget {
   // 1. Add callback to handle closing the widget
@@ -34,11 +38,16 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
   static const int _packetTypeVideo = 0;
 
+  final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
+
+  final TimerService _timerService = TimerService();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
+    ref.read(adsProvider).initializeusbBanner();
     // _isPaused = true;
   }
 
@@ -113,6 +122,10 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         setState(() {
           _isStreaming = true;
         });
+
+        _analyticsService.logEvent(name: "usb_server_started");
+
+        _timerService.startTimer();
         // Update provider
         ref.read(usbProvider.notifier).setStreaming(true);
       }
@@ -259,6 +272,13 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         _isStreaming = false;
         _isConnected = false; // <-- NEW: Reset connection status
       });
+
+      double durationInMinutes = _timerService.stopTimer();
+
+      _analyticsService.logEvent(
+        name: "wireless_server_stopped",
+        parameters: {"duration_minutes": durationInMinutes},
+      );
       // Update provider
       ref.read(usbProvider.notifier).setStreaming(false);
     } else {
@@ -433,6 +453,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
 
   @override
   Widget build(BuildContext context) {
+    final adsState = ref.watch(adsProvider);
+
     final Color successColor = Theme.of(context).brightness == Brightness.dark
         ? Colors.greenAccent[400]!
         : Colors.green.shade600;
@@ -504,9 +526,14 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                       children: [
                         ElevatedButton.icon(
                           // Call exit function
-                          onPressed: _startServer,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: const Text("Refresh"),
+                          onPressed: () async {
+                            setState(() {
+                              _isPaused = false;
+                            });
+                            await _restartCameraPreview();
+                          },
+                          icon: Icon(Icons.refresh_rounded, size: AppSizes.icon_sm,),
+                          label: Text("Refresh", style: TextStyle(fontSize: AppSizes.font_sm),),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MyColors.green.withOpacity(0.8),
                             foregroundColor: Colors.white,
@@ -592,7 +619,17 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
               ),
             ),
 
-            SizedBox(height: 24.h),
+            SizedBox(height: 12.h),
+
+            if (adsState.isUsbBannerLoaded)
+              SizedBox(
+                height: adsState.usb_banner.size.height.toDouble(),
+                width: adsState.usb_banner.size.width.toDouble(),
+                child: AdWidget(ad: adsState.usb_banner),
+              ),
+
+            SizedBox(height: 12.h),
+
             Text(
               "LIVE PREVIEW",
               style: TextStyle(

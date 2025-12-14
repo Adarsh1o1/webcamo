@@ -4,26 +4,16 @@
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 <uses-feature android:name="android.hardware.camera.any" />
-
-
-
-    <queries>
-      <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="https" />
-      </intent>
-      <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="http" />
-      </intent>
-    </queries>
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+<uses-permission android:name="com.google.android.gms.permission.AD_ID" />
     
     <application
-        android:label="webcamo"
+        android:label="Eazycam"
         android:name="${applicationName}"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher">
         <service
-        android:name="com.example.webcamo.CameraStreamService"
+        android:name="com.eazycam.app.CameraStreamService"
         android:exported="false"
         android:foregroundServiceType="camera|microphone" />
         <activity
@@ -53,6 +43,10 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+         <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-6898544799742275~4534692674"/>
+        
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
