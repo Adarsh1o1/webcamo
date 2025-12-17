@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -35,6 +36,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   bool _isFlashOn = false;
 
   bool _isPaused = false;
+  Isolate? _workerIsolate;
+  SendPort? _workerSendPort;
 
   static const int _packetTypeVideo = 0;
 
@@ -45,14 +48,22 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   @override
   void initState() {
     super.initState();
+    _startWorker();
     WidgetsBinding.instance.addObserver(this);
     _initializeCamera();
     ref.read(adsProvider).initializeusbBanner();
     // _isPaused = true;
   }
 
+  Future<void> _startWorker() async {
+    final receivePort = ReceivePort();
+    _workerIsolate = await Isolate.spawn(usbWorker, receivePort.sendPort);
+    _workerSendPort = await receivePort.first as SendPort;
+  }
+
   @override
   void dispose() {
+    _workerIsolate?.kill(priority: Isolate.immediate);
     WidgetsBinding.instance.removeObserver(this);
     // Ensure clean up - we can't call async _stopStreaming here directly and expect it to finish
     // but we can trigger the cleanup logic.
@@ -172,80 +183,40 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   }
 
   void _startImageStream() {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return;
-    }
+  if (_cameraController == null || !_cameraController!.value.isInitialized) return;
 
-    if (_cameraController!.value.isStreamingImages) return;
+  int frameCount = 0;
+  _cameraController!.startImageStream((CameraImage image) {
+    frameCount++;
+    // Adjust throttle based on performance (e.g., process every 2nd frame)
+    if (frameCount % 2 != 0) return;
+    if (_workerSendPort == null) return;
 
-    int frameCount = 0;
-    _cameraController!.startImageStream((CameraImage image) async {
-      frameCount++;
-      if (frameCount % 2 != 0) return;
-      if (_clients.isEmpty) return;
+    // Just pass the data to the isolate - do nothing else!
+    _workerSendPort!.send(CameraFrame(
+      y: image.planes[0].bytes,
+      u: image.planes[1].bytes,
+      v: image.planes[2].bytes,
+      width: image.width,
+      height: image.height,
+      yRowStride: image.planes[0].bytesPerRow,
+      uRowStride: image.planes[1].bytesPerRow,
+      vRowStride: image.planes[2].bytesPerRow,
+      uPixelStride: image.planes[1].bytesPerPixel ?? 1,
+      vPixelStride: image.planes[2].bytesPerPixel ?? 1,
+      isFront: _cameraController!.description.lensDirection == CameraLensDirection.front,
+    ));
+  });
+}
 
-      try {
-        if (Platform.isAndroid &&
-            image.format.group == ImageFormatGroup.yuv420) {
-          final bool isFront =
-              _cameraController!.description.lensDirection ==
-              CameraLensDirection.front;
-
-          final int width = image.width;
-          final int height = image.height;
-
-          final Plane planeY = image.planes[0];
-          final Plane planeU = image.planes[1];
-          final Plane planeV = image.planes[2];
-
-          final Uint8List yBytes = planeY.bytes;
-          final Uint8List uBytes = planeU.bytes;
-          final Uint8List vBytes = planeV.bytes;
-
-          final int metadataSize = 41;
-          final int payloadSize =
-              metadataSize + yBytes.length + uBytes.length + vBytes.length;
-
-          final List<int> header = [];
-          header.add(_packetTypeVideo);
-          header.addAll(_int32ToBytes(payloadSize));
-
-          header.addAll(_int32ToBytes(width));
-          header.addAll(_int32ToBytes(height));
-          header.addAll(_int32ToBytes(yBytes.length));
-          header.addAll(_int32ToBytes(uBytes.length));
-          header.addAll(_int32ToBytes(vBytes.length));
-          header.addAll(_int32ToBytes(planeY.bytesPerRow));
-          header.addAll(_int32ToBytes(planeU.bytesPerRow));
-          header.addAll(_int32ToBytes(planeV.bytesPerRow));
-          header.addAll(_int32ToBytes(planeU.bytesPerPixel ?? 1));
-          header.addAll(_int32ToBytes(planeV.bytesPerPixel ?? 1));
-          header.add(isFront ? 1 : 0);
-
-          for (final client in _clients) {
-            client.add(header);
-            client.add(yBytes);
-            client.add(uBytes);
-            client.add(vBytes);
-            await client.flush();
-          }
-        }
-      } catch (e) {
-        debugPrint("Error streaming video frame: $e");
-        _stopStreaming();
-        _initializeCamera();
-      }
-    });
-  }
-
-  List<int> _int32ToBytes(int value) {
-    return [
-      (value >> 24) & 0xFF,
-      (value >> 16) & 0xFF,
-      (value >> 8) & 0xFF,
-      value & 0xFF,
-    ];
-  }
+  // List<int> _int32ToBytes(int value) {
+  //   return [
+  //     (value >> 24) & 0xFF,
+  //     (value >> 16) & 0xFF,
+  //     (value >> 8) & 0xFF,
+  //     value & 0xFF,
+  //   ];
+  // }
 
   // 3. Logic to Stop and trigger callback
   Future<void> _handleStopAndExit() async {
@@ -804,4 +775,79 @@ class _ControlIcon extends StatelessWidget {
       ),
     );
   }
+}
+
+// Data model for passing planes between isolates
+class CameraFrame {
+  final Uint8List y, u, v;
+  final int width, height, yRowStride, uRowStride, vRowStride, uPixelStride, vPixelStride;
+  final bool isFront;
+
+  CameraFrame({
+    required this.y, required this.u, required this.v,
+    required this.width, required this.height,
+    required this.yRowStride, required this.uRowStride,
+    required this.vRowStride, required this.uPixelStride,
+    required this.vPixelStride, required this.isFront,
+  });
+}
+
+// The Worker Isolate
+void usbWorker(SendPort mainSendPort) async {
+  final ReceivePort workerReceivePort = ReceivePort();
+  mainSendPort.send(workerReceivePort.sendPort);
+
+  ServerSocket? serverSocket;
+  final List<Socket> clients = [];
+
+  try {
+    serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, 23233);
+    serverSocket.listen((socket) {
+      socket.setOption(SocketOption.tcpNoDelay, true); // Crucial for low latency
+      clients.add(socket);
+      socket.done.then((_) => clients.remove(socket));
+      socket.handleError((_) => clients.remove(socket));
+    });
+
+    await for (var message in workerReceivePort) {
+      if (message is! CameraFrame || clients.isEmpty) continue;
+
+      final builder = BytesBuilder();
+      const int metadataSize = 41;
+      final int payloadSize = metadataSize + message.y.length + message.u.length + message.v.length;
+
+      // Pack Metadata
+      builder.addByte(0); // Packet Type
+      builder.add(_int32ToBytes(payloadSize));
+      builder.add(_int32ToBytes(message.width));
+      builder.add(_int32ToBytes(message.height));
+      builder.add(_int32ToBytes(message.y.length));
+      builder.add(_int32ToBytes(message.u.length));
+      builder.add(_int32ToBytes(message.v.length));
+      builder.add(_int32ToBytes(message.yRowStride));
+      builder.add(_int32ToBytes(message.uRowStride));
+      builder.add(_int32ToBytes(message.vRowStride));
+      builder.add(_int32ToBytes(message.uPixelStride));
+      builder.add(_int32ToBytes(message.vPixelStride));
+      builder.addByte(message.isFront ? 1 : 0);
+
+      // Add Data
+      builder.add(message.y);
+      builder.add(message.u);
+      builder.add(message.v);
+
+      final fullPacket = builder.takeBytes();
+      for (final client in clients) {
+        client.add(fullPacket);
+      }
+    }
+  } finally {
+    serverSocket?.close();
+  }
+}
+
+Uint8List _int32ToBytes(int value) {
+  final data = ByteData(4);
+  data.setInt32(0, value, Endian.big);
+  return data.buffer.asUint8List();
 }
