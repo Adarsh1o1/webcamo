@@ -30,8 +30,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   List<CameraDescription> _cameras = [];
   CameraDescription? _selectedCamera;
   bool _isStreaming = false;
-  ServerSocket? _serverSocket;
-  final List<Socket> _clients = [];
+  // ServerSocket? _serverSocket;
+  // final List<Socket> _clients = [];
   bool _isConnected = false; // <-- NEW: Track connection status
   bool _isFlashOn = false;
 
@@ -58,7 +58,17 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   Future<void> _startWorker() async {
     final receivePort = ReceivePort();
     _workerIsolate = await Isolate.spawn(usbWorker, receivePort.sendPort);
-    _workerSendPort = await receivePort.first as SendPort;
+    
+    // Listen for messages FROM the isolate
+    receivePort.listen((message) {
+      if (message is SendPort) {
+        _workerSendPort = message;
+      } else if (message == "CONNECTED") {
+        setState(() => _isConnected = true);
+      } else if (message == "DISCONNECTED") {
+        setState(() => _isConnected = false);
+      }
+    });
   }
 
   @override
@@ -94,7 +104,10 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         await _initController(_selectedCamera!);
 
         // 2. AUTO START: Start server immediately after camera init
-        _startServer();
+        _startImageStream();
+        if (mounted) {
+        setState(() => _isStreaming = true);
+      }
       }
     } catch (e) {
       debugPrint("Error initializing camera: $e");
@@ -123,64 +136,63 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
     }
   }
 
-  Future<void> _startServer() async {
-    // Prevent double start
-    if (_isStreaming) return;
+  // Future<void> _startServer() async {
+  //   // Prevent double start
+  //   if (_isStreaming) return;
 
-    try {
-      _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, 23233);
-      if (mounted) {
-        setState(() {
-          _isStreaming = true;
-        });
+  //   try {
+  //     _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, 23233);
+  //     if (mounted) {
+  //       setState(() {
+  //         _isStreaming = true;
+  //       });
 
-        _analyticsService.logEvent(name: "usb_server_started");
+  //       _analyticsService.logEvent(name: "usb_server_started");
 
-        _timerService.startTimer();
-        // Update provider
-        ref.read(usbProvider.notifier).setStreaming(true);
-      }
+  //       _timerService.startTimer();
+  //       // Update provider
+  //       ref.read(usbProvider.notifier).setStreaming(true);
+  //     }
 
-      _serverSocket!.listen((socket) {
-        debugPrint("Client connected: ${socket.remoteAddress.address}");
-        _clients.add(socket);
-        if (mounted) {
-          setState(() {
-            _isConnected = true; // <-- NEW: Client connected
-          });
-        }
+  //     _serverSocket!.listen((socket) {
+  //       debugPrint("Client connected: ${socket.remoteAddress.address}");
+  //       _clients.add(socket);
+  //       if (mounted) {
+  //         setState(() {
+  //           _isConnected = true; // <-- NEW: Client connected
+  //         });
+  //       }
 
-        socket.done.then((_) {
-          debugPrint("Client disconnected");
-          _clients.remove(socket);
-          if (mounted && _clients.isEmpty) {
-            setState(() {
-              _isConnected = false; // <-- NEW: Client disconnected
-            });
-          }
-        });
+  //       socket.done.then((_) {
+  //         debugPrint("Client disconnected");
+  //         _clients.remove(socket);
+  //         if (mounted && _clients.isEmpty) {
+  //           setState(() {
+  //             _isConnected = false; // <-- NEW: Client disconnected
+  //           });
+  //         }
+  //       });
 
-        socket.handleError((error) {
-          debugPrint("Socket error: $error");
-          _clients.remove(socket);
-          if (mounted && _clients.isEmpty) {
-            setState(() {
-              _isConnected = false; // <-- NEW: Client disconnected
-            });
-          }
-        });
-      });
-
-      _startImageStream();
-    } catch (e) {
-      debugPrint("Error starting server: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Failed to start server: $e")));
-      }
-    }
-  }
+  //       socket.handleError((error) {
+  //         debugPrint("Socket error: $error");
+  //         _clients.remove(socket);
+  //         if (mounted && _clients.isEmpty) {
+  //           setState(() {
+  //             _isConnected = false; // <-- NEW: Client disconnected
+  //           });
+  //         }
+  //       });
+  //     });
+  //     _startImageStream();
+  //   } catch (e) {
+  //     debugPrint("Error starting server: $e");
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(
+  //         context,
+  //       ).showSnackBar(SnackBar(content: Text("Failed to start server: $e")));
+  //     }
+  //   }
+  // }
 
   void _startImageStream() {
   if (_cameraController == null || !_cameraController!.value.isInitialized) return;
@@ -189,7 +201,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   _cameraController!.startImageStream((CameraImage image) {
     frameCount++;
     // Adjust throttle based on performance (e.g., process every 2nd frame)
-    if (frameCount % 2 != 0) return;
+    if (frameCount % 1 != 0) return;
     if (_workerSendPort == null) return;
 
     // Just pass the data to the isolate - do nothing else!
@@ -230,13 +242,13 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
       await _cameraController!.stopImageStream();
     }
 
-    for (final client in _clients) {
-      client.destroy();
-    }
-    _clients.clear();
+    // for (final client in _clients) {
+    //   client.destroy();
+    // }
+    // _clients.clear();
 
-    await _serverSocket?.close();
-    _serverSocket = null;
+    // await _serverSocket?.close();
+    // _serverSocket = null;
 
     if (mounted) {
       setState(() {
@@ -805,8 +817,16 @@ void usbWorker(SendPort mainSendPort) async {
     serverSocket.listen((socket) {
       socket.setOption(SocketOption.tcpNoDelay, true); // Crucial for low latency
       clients.add(socket);
-      socket.done.then((_) => clients.remove(socket));
-      socket.handleError((_) => clients.remove(socket));
+      mainSendPort.send("CONNECTED");
+
+      socket.done.then((_) {
+        clients.remove(socket);
+        if (clients.isEmpty) mainSendPort.send("DISCONNECTED");
+      });
+      socket.handleError((_) {
+        clients.remove(socket);
+        if (clients.isEmpty) mainSendPort.send("DISCONNECTED");
+      });
     });
 
     await for (var message in workerReceivePort) {
