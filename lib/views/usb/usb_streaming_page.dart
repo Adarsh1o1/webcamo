@@ -58,13 +58,17 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   Future<void> _startWorker() async {
     final receivePort = ReceivePort();
     _workerIsolate = await Isolate.spawn(usbWorker, receivePort.sendPort);
-    
+
     // Listen for messages FROM the isolate
     receivePort.listen((message) {
       if (message is SendPort) {
         _workerSendPort = message;
       } else if (message == "CONNECTED") {
         setState(() => _isConnected = true);
+      } else if (message == "SERVER_STARTED") {
+        _analyticsService.logEvent(name: "usb_server_started");
+        _timerService.startTimer();
+        ref.read(usbProvider.notifier).setStreaming(true);
       } else if (message == "DISCONNECTED") {
         setState(() => _isConnected = false);
       }
@@ -106,8 +110,8 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         // 2. AUTO START: Start server immediately after camera init
         _startImageStream();
         if (mounted) {
-        setState(() => _isStreaming = true);
-      }
+          setState(() => _isStreaming = true);
+        }
       }
     } catch (e) {
       debugPrint("Error initializing camera: $e");
@@ -195,31 +199,36 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
   // }
 
   void _startImageStream() {
-  if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    if (_cameraController == null || !_cameraController!.value.isInitialized)
+      return;
 
-  int frameCount = 0;
-  _cameraController!.startImageStream((CameraImage image) {
-    frameCount++;
-    // Adjust throttle based on performance (e.g., process every 2nd frame)
-    if (frameCount % 1 != 0) return;
-    if (_workerSendPort == null) return;
+    int frameCount = 0;
+    _cameraController!.startImageStream((CameraImage image) {
+      frameCount++;
+      // Adjust throttle based on performance (e.g., process every 2nd frame)
+      if (frameCount % 1 != 0) return;
+      if (_workerSendPort == null) return;
 
-    // Just pass the data to the isolate - do nothing else!
-    _workerSendPort!.send(CameraFrame(
-      y: image.planes[0].bytes,
-      u: image.planes[1].bytes,
-      v: image.planes[2].bytes,
-      width: image.width,
-      height: image.height,
-      yRowStride: image.planes[0].bytesPerRow,
-      uRowStride: image.planes[1].bytesPerRow,
-      vRowStride: image.planes[2].bytesPerRow,
-      uPixelStride: image.planes[1].bytesPerPixel ?? 1,
-      vPixelStride: image.planes[2].bytesPerPixel ?? 1,
-      isFront: _cameraController!.description.lensDirection == CameraLensDirection.front,
-    ));
-  });
-}
+      // Just pass the data to the isolate - do nothing else!
+      _workerSendPort!.send(
+        CameraFrame(
+          y: image.planes[0].bytes,
+          u: image.planes[1].bytes,
+          v: image.planes[2].bytes,
+          width: image.width,
+          height: image.height,
+          yRowStride: image.planes[0].bytesPerRow,
+          uRowStride: image.planes[1].bytesPerRow,
+          vRowStride: image.planes[2].bytesPerRow,
+          uPixelStride: image.planes[1].bytesPerPixel ?? 1,
+          vPixelStride: image.planes[2].bytesPerPixel ?? 1,
+          isFront:
+              _cameraController!.description.lensDirection ==
+              CameraLensDirection.front,
+        ),
+      );
+    });
+  }
 
   // List<int> _int32ToBytes(int value) {
   //   return [
@@ -259,7 +268,7 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
       double durationInMinutes = _timerService.stopTimer();
 
       _analyticsService.logEvent(
-        name: "wireless_server_stopped",
+        name: "USB_server_stopped",
         parameters: {"duration_minutes": durationInMinutes},
       );
       // Update provider
@@ -515,8 +524,14 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
                             });
                             await _restartCameraPreview();
                           },
-                          icon: Icon(Icons.refresh_rounded, size: AppSizes.icon_sm,),
-                          label: Text("Refresh", style: TextStyle(fontSize: AppSizes.font_sm),),
+                          icon: Icon(
+                            Icons.refresh_rounded,
+                            size: AppSizes.icon_sm,
+                          ),
+                          label: Text(
+                            "Refresh",
+                            style: TextStyle(fontSize: AppSizes.font_sm),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MyColors.green.withOpacity(0.8),
                             foregroundColor: Colors.white,
@@ -792,15 +807,27 @@ class _ControlIcon extends StatelessWidget {
 // Data model for passing planes between isolates
 class CameraFrame {
   final Uint8List y, u, v;
-  final int width, height, yRowStride, uRowStride, vRowStride, uPixelStride, vPixelStride;
+  final int width,
+      height,
+      yRowStride,
+      uRowStride,
+      vRowStride,
+      uPixelStride,
+      vPixelStride;
   final bool isFront;
 
   CameraFrame({
-    required this.y, required this.u, required this.v,
-    required this.width, required this.height,
-    required this.yRowStride, required this.uRowStride,
-    required this.vRowStride, required this.uPixelStride,
-    required this.vPixelStride, required this.isFront,
+    required this.y,
+    required this.u,
+    required this.v,
+    required this.width,
+    required this.height,
+    required this.yRowStride,
+    required this.uRowStride,
+    required this.vRowStride,
+    required this.uPixelStride,
+    required this.vPixelStride,
+    required this.isFront,
   });
 }
 
@@ -814,8 +841,12 @@ void usbWorker(SendPort mainSendPort) async {
 
   try {
     serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, 23233);
+    mainSendPort.send("SERVER_STARTED");
     serverSocket.listen((socket) {
-      socket.setOption(SocketOption.tcpNoDelay, true); // Crucial for low latency
+      socket.setOption(
+        SocketOption.tcpNoDelay,
+        true,
+      ); // Crucial for low latency
       clients.add(socket);
       mainSendPort.send("CONNECTED");
 
@@ -834,7 +865,8 @@ void usbWorker(SendPort mainSendPort) async {
 
       final builder = BytesBuilder();
       const int metadataSize = 41;
-      final int payloadSize = metadataSize + message.y.length + message.u.length + message.v.length;
+      final int payloadSize =
+          metadataSize + message.y.length + message.u.length + message.v.length;
 
       // Pack Metadata
       builder.addByte(0); // Packet Type
