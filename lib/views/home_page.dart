@@ -572,7 +572,7 @@ class _HomePageState extends ConsumerState<HomePage>
     String? displayIp = ip;
 
     if (ip == null) {
-      displayIp = '192.168.43.1'; // Default for hotspot
+      displayIp = 'Unavailable'; // Default for hotspot
     }
 
     final router = shelf_router.Router();
@@ -636,7 +636,13 @@ class _HomePageState extends ConsumerState<HomePage>
       if (mounted) {
         setState(() {
           // We still show the user the *actual* Wi-Fi/Hotspot IP
-          _serverUrl = 'http://$displayIp:$_port';
+          if (displayIp == null || displayIp == 'Unavailable' ){
+            _serverUrl = 'Unavailable';
+          } else {
+            _serverUrl = 'http://$displayIp:$_port';
+          }
+          
+          // _serverUrl = 'http://$displayIp:$_port';
           _isServerStarting = false;
           _ipAddress = displayIp!;
         });

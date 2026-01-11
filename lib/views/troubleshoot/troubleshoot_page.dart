@@ -20,7 +20,7 @@ class TroubleshootPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 30, 16, 22),
                 children: [
                   const Text(
-                    "Unable to connect? Here are some steps to help you troubleshoot your issues.",
+                    "Unable to connect? Here are some steps to help you troubleshoot your issues. \nIf Nothing works, Connect your phone to PC's hotspot and try again.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -28,6 +28,12 @@ class TroubleshootPage extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 20),
+                  _buildIssue(
+                    title: "Wifi IP is Null or Unavialable.",
+                    steps: [
+                      "Make sure that your device is connected to a Wi-Fi network only not mobile data. It should work even without internet access. Alternatively, Turn your PC's hotspot on and connect your mobile device to it.",
+                    ],
+                  ),
                   _buildIssue(
                     title: "Client not connecting to server.",
                     steps: [
@@ -44,12 +50,6 @@ class TroubleshootPage extends StatelessWidget {
                     title: "Not connecting to the camera.",
                     steps: [
                       "Ensure you have granted camera and microphone permissions. if not granted, go to app settings and enable them.",
-                    ],
-                  ),
-                  _buildIssue(
-                    title: "Wifi IP is Null.",
-                    steps: [
-                      "Make sure that your device is connected to a Wi-Fi network only not mobile data. It should work even without internet access.",
                     ],
                   ),
                 ],
