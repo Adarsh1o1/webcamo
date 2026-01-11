@@ -9,5 +9,5 @@ class AppConstants {
   static const String TERMS = "https://eazycam.app/terms.html";
   static const String PRIVACY_POLICY = "https://eazycam.app/privacy.html";
   static const String HOW_TO_SETUP = "https://eazycam.app/index.html#how-it-works";
-  
+  static const String DOWNLOADS = "https://eazycam.app/#download";
 }

@@ -24,10 +24,13 @@ import 'package:webcamo/providers/server_provider.dart';
 import 'package:webcamo/services/firebase_analytics_service.dart';
 import 'package:webcamo/services/notification_service.dart';
 import 'package:webcamo/utils/colors.dart';
+import 'package:webcamo/utils/constants.dart';
 import 'package:webcamo/utils/logger.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/timer_service.dart';
+import 'package:webcamo/utils/url_launcher.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
+import 'package:webcamo/widgets/desktop_app_prompt.dart';
 
 const String clientHtml = """
 <!DOCTYPE html>
@@ -636,12 +639,12 @@ class _HomePageState extends ConsumerState<HomePage>
       if (mounted) {
         setState(() {
           // We still show the user the *actual* Wi-Fi/Hotspot IP
-          if (displayIp == null || displayIp == 'Unavailable' ){
+          if (displayIp == null || displayIp == 'Unavailable') {
             _serverUrl = 'Unavailable';
           } else {
             _serverUrl = 'http://$displayIp:$_port';
           }
-          
+
           // _serverUrl = 'http://$displayIp:$_port';
           _isServerStarting = false;
           _ipAddress = displayIp!;
@@ -940,8 +943,10 @@ class _HomePageState extends ConsumerState<HomePage>
 
     return Scaffold(
       backgroundColor: MyColors.lightColorScheme.primary,
-      body: SingleChildScrollView(
-        child: Column(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1127,7 +1132,9 @@ class _HomePageState extends ConsumerState<HomePage>
                                 ),
                                 SizedBox(height: 12.h),
                                 _InstructionRow(
-                                  text: "Enter IP in the Desktop client app",
+                                  text: "Enter IP in the ",
+                                  textSpan: "Desktop client app",
+                                  myUrl: AppConstants.DOWNLOADS,
                                 ),
                               ],
                             ),
@@ -1473,6 +1480,9 @@ class _HomePageState extends ConsumerState<HomePage>
           ],
         ),
       ),
+          const DesktopAppPrompt(),
+        ],
+      ),
     );
   }
 }
@@ -1648,7 +1658,9 @@ class _RippleUSBIconState extends State<_RippleUSBIcon>
 
 class _InstructionRow extends StatelessWidget {
   final String text;
-  const _InstructionRow({required this.text});
+  final String? myUrl;
+  final String? textSpan;
+  const _InstructionRow({required this.text, this.myUrl, this.textSpan});
 
   @override
   Widget build(BuildContext context) {
@@ -1665,9 +1677,28 @@ class _InstructionRow extends StatelessWidget {
         ),
         SizedBox(width: 12.w),
         Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: Colors.white60, fontSize: 13.sp),
+          child: GestureDetector(
+            onTap: () => UrlLauncherUtil.launchInAppView(myUrl!),
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: text,
+                    style: TextStyle(color: Colors.white60, fontSize: 13.2.sp),
+                  ),
+                  TextSpan(
+                    text: textSpan,
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: 13.2.sp,
+                      decoration: textSpan != null
+                          ? TextDecoration.underline
+                          : TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ],

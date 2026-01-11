@@ -5,6 +5,7 @@ import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page.dart';
 import 'package:webcamo/views/troubleshoot/troubleshoot_page_usb.dart';
 import 'package:webcamo/views/usb/usb_streaming_page.dart';
+import 'package:webcamo/widgets/desktop_app_prompt.dart';
 
 // Convert to Stateful Widget
 class USBPage extends StatefulWidget {
@@ -161,6 +162,7 @@ class _USBPageState extends State<USBPage> {
                 ],
               ),
             ),
+          const DesktopAppPrompt(),
         ],
       ),
     );

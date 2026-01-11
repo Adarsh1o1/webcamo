@@ -176,6 +176,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 _CustomDivider(color: _darkBackground),
                 _ActionTile(
+                  icon: Icons.download,
+                  title: 'Download PC Client',
+                  value: '',
+                  textColor: _textPrimary,
+                  onTap: () =>
+                      UrlLauncherUtil.launchInAppView(AppConstants.DOWNLOADS),
+                ),
+                _CustomDivider(color: _darkBackground),
+                _ActionTile(
                   icon: Icons.help_outline_rounded,
                   title: 'FAQs',
                   value: '',
@@ -328,7 +337,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                   ),
                   Text(
-                    "Version 0.1.0",
+                    "Version 0.1.1",
                     style: TextStyle(
                       color: MyColors.grey.withOpacity(0.3),
                       fontSize: 12.sp,

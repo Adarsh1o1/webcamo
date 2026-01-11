@@ -13,6 +13,7 @@ import 'package:webcamo/services/firebase_analytics_service.dart';
 import 'package:webcamo/utils/colors.dart';
 import 'package:webcamo/utils/sizes.dart';
 import 'package:webcamo/utils/timer_service.dart';
+import 'package:webcamo/widgets/desktop_app_prompt.dart';
 
 class UsbStreamingPage extends ConsumerStatefulWidget {
   // 1. Add callback to handle closing the widget
@@ -454,13 +455,15 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
         ? Colors.orangeAccent[200]!
         : Colors.orange.shade800;
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSizes.p16,
-          vertical: AppSizes.p24,
-        ),
-        child: Column(
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSizes.p16,
+              vertical: AppSizes.p24,
+            ),
+            child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
@@ -752,7 +755,10 @@ class _UsbStreamingPageState extends ConsumerState<UsbStreamingPage>
             SizedBox(height: 24.h),
           ],
         ),
-      ),
+          ),
+        ),
+        const DesktopAppPrompt(),
+      ],
     );
   }
 }

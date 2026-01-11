@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:webcamo/utils/colors.dart';
 
 class TroubleshootPage extends StatelessWidget {
@@ -11,7 +12,10 @@ class TroubleshootPage extends StatelessWidget {
       opaque: false,
       child: Scaffold(
         backgroundColor: MyColors.lightColorScheme.primary,
-        appBar: AppBar(title: Text("Troubleshooting"), backgroundColor: Color(0xff1E1E1E)),
+        appBar: AppBar(
+          title: Text("Troubleshooting"),
+          backgroundColor: Color(0xff1E1E1E),
+        ),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -20,7 +24,16 @@ class TroubleshootPage extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 30, 16, 22),
                 children: [
                   const Text(
-                    "Unable to connect? Here are some steps to help you troubleshoot your issues. \nIf Nothing works, Connect your phone to PC's hotspot and try again.",
+                    "Unable to connect? Here are some steps to help you troubleshoot your issues.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                  SizedBox(height: 5.sp),
+                  const Text(
+                    "If nothing works, connect your phone to PC's hotspot and try again.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 15,
@@ -43,7 +56,7 @@ class TroubleshootPage extends StatelessWidget {
                   _buildIssue(
                     title: "Device connected but no Camera stream.",
                     steps: [
-                      "The issue is likely caused by a firewall. WebSockets connect over TCP, and the video stream is sent after the WebSocket connection is established — usually over UDP and sometimes TCP on random discovery ports. These ports may be blocked by the firewall. Try disabling any VPNs or firewalls temporarily, or allow incoming connections in your firewall settings to fix the issue."
+                      "The issue is likely caused by a firewall. WebSockets connect over TCP, and the video stream is sent after the WebSocket connection is established — usually over UDP and sometimes TCP on random discovery ports. These ports may be blocked by the firewall. Try disabling any VPNs or firewalls temporarily, or allow incoming connections in your firewall settings to fix the issue.",
                     ],
                   ),
                   _buildIssue(
