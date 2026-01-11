@@ -11,6 +11,7 @@ import 'package:webcamo/views/bottombar/bottom_bar_controller.dart';
 import 'package:webcamo/views/home_page.dart';
 import 'package:webcamo/views/settings/settings_page.dart'; // <-- NEW
 import 'package:webcamo/views/usb/usb_page.dart'; // <-- NEW
+import 'package:webcamo/services/firebase_analytics_service.dart';
 
 class BottomBar extends ConsumerStatefulWidget {
   const BottomBar({super.key});
@@ -21,6 +22,8 @@ class BottomBar extends ConsumerStatefulWidget {
 
 class _BottomBarState extends ConsumerState<BottomBar> {
   int _currentIndex = 0;
+
+  final FirebaseAnalyticsService _analyticsService = FirebaseAnalyticsService();
 
   // Define all pages/screens here
   static final List<Widget> _pages = [
@@ -73,8 +76,16 @@ class _BottomBarState extends ConsumerState<BottomBar> {
                     // though navigation will trigger dispose of UsbStreamingPage.
                     // However, to be safe and consistent with Home page logic:
                     ref.read(usbProvider.notifier).setStreaming(false);
+                    _analyticsService.logEvent(
+                      name: 'usb_streaming_stopped_navigation',
+                      parameters: null,
+                    );
                   } else {
                     ref.read(serverProvider.notifier).stopServer();
+                    _analyticsService.logEvent(
+                      name: 'wireless_server_stopped_navigation',
+                      parameters: null,
+                    );
                   }
                   Navigator.of(context).pop(true);
                 },
