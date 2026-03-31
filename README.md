@@ -17,4 +17,4 @@
 
 **What I learned:** More about how browsers negotiate media streams, ICE candidates, and STUN/TURN servers than any tutorial could have taught me.
 
-[[Play Store link](https://play.google.com/store/apps/details?id=com.eazycam.app)]
+[Play Store link(https://play.google.com/store/apps/details?id=com.eazycam.app)]
